@@ -4,7 +4,7 @@ import logging
 from html import escape
 from cachetools import TTLCache
 from pymongo import DESCENDING
-from telegram import Update, InlineQueryResultPhoto, InlineKeyboardButton, InlineKeyboardMarkup, InlineQueryResultVideo
+from telegram import Update, InlineQueryResultPhoto, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import InlineQueryHandler, CallbackContext, CallbackQueryHandler
 from telegram.constants import ParseMode
 from shivu import user_collection, collection, application, db
@@ -175,25 +175,9 @@ async def inlinequery(update: Update, context: CallbackContext) -> None:
                 elif '☃️' in character['name']:
                     caption += "\n\n☃️ 𝑾𝒊𝒏𝒕𝒆𝒓 ☃️"
         
-            
+            # Debugging print for character_id
            
-        # Debugging print for character_id
-        if character['img_url'].endswith(('.mp4', '.gif')):        
-            results.append(
-                InlineQueryResultVideo(
-                    thumbnail_url=character['img_url'],
-                    id=f"{character['id']}_{time.time()}",
-                    video_url=character['img_url'],
-                    mime_type="video/mp4",
-                    title=character['name'],  # Judul video, Anda dapat mengubah ini sesuai keinginan
-                    caption=caption,
-                    parse_mode='HTML',
-                    reply_markup=keyboard if not query.startswith('collection.') else None,
-                    video_width=300,  # Adjust the width as needed
-                    video_height=300  # Adjust the height as needed
-                )
-            )
-        else:
+
             results.append(
                 InlineQueryResultPhoto(
                     thumbnail_url=character['img_url'],
@@ -203,10 +187,10 @@ async def inlinequery(update: Update, context: CallbackContext) -> None:
                     parse_mode='HTML',
                     reply_markup=keyboard if not query.startswith('collection.') else None,
                     photo_width=300,  # Adjust the width as needed
-                    photo_height=300  # Adjust the height as needed   
+                    photo_height=300  # Adjust the height as needed
                 )
             )
- 
+
         await update.inline_query.answer(results, next_offset=next_offset, cache_time=5)
 
 # Callback query handler for the "See Top Grabbers Of This Chat" button
