@@ -297,14 +297,14 @@ async def receive_photo(client, message):
             await message.reply_text("⏳ Adding Character...")
 
             # Send notification with event emoji and rarity
-            caption = (
-                f"OwO! Check out this character!\n\n"
-                f"<b>{user_data['anime']}</b>\n"
-                f"{waifu_id}: {user_data['name']} [{character['event_emoji']}]\n"
-                f"(𝙍𝘼𝙍𝙄𝙏𝙔: {user_data['rarity']})\n\n"
-                f"{character['event_name']}\n\n"
-                f"➼ ᴀᴅᴅᴇᴅ ʙʏ: <a href='tg://user?id={message.from_user.id}'>{message.from_user.first_name}</a>"
-            )
+                caption = (
+                    f"OwO! Check out this character!\n\n"
+                    f"<b>{user_data['anime']}</b>\n"
+                    f"{waifu_id}: {user_data['name']} [{waifu['event_emoji']}]\n"
+                    f"(𝙍𝘼𝙍𝙄𝙏𝙔: {user_data['rarity']})\n\n"
+                    f"{waifu['event_name']}\n\n"
+                    f"➼ ᴀᴅᴅᴇᴅ ʙʏ: <a href='tg://user?id={message.from_user.id}'>{message.from_user.first_name}</a>"
+                )
             
             await app.send_photo(chat_id=CHARA_CHANNEL_ID, photo=photo_file_id, caption=caption)
             await app.send_photo(chat_id=SUPPORT_CHAT, photo=photo_file_id, caption=caption)
