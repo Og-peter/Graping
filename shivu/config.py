@@ -11,7 +11,7 @@ class Config(object):
     SUPPORT_CHAT = "dynamic_gangs"
     UPDATE_CHAT = "Seizer_updates"
     BOT_USERNAME = "waifu_pro_bot"
-    CHARA_CHANNEL_ID = "-1002208875879"
+    CHARA_CHANNEL_ID = "-1002335814239"
     api_id = 24698455
     api_hash = "00d4cd57b1fb369ea65563d40c9c2494"
 
