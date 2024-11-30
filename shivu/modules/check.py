@@ -11,7 +11,7 @@ async def check_character(update: Update, context: CallbackContext) -> None:
     try:
         args = context.args
         if len(args) != 1:
-            await update.message.reply_text('Incorrect format. Please use: /s slave_id')
+            await update.message.reply_text('Incorrect format. Please use: /check waifu_id')
             return
         character_id = args[0]
         character = await collection.find_one({'id': character_id})
@@ -58,6 +58,6 @@ async def handle_callback_query(update: Update, context: CallbackContext) -> Non
         global_count = data[2]
         await query.answer(f"⚡️ Globally Grapped : {global_count}x.", show_alert=True)
 
-CHECK_HANDLER = CommandHandler('s', check_character, block=False)
+CHECK_HANDLER = CommandHandler('check', check_character, block=False)
 application.add_handler(CallbackQueryHandler(handle_callback_query, pattern='slaves_', block=False))
 application.add_handler(CHECK_HANDLER)
