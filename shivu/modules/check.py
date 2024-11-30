@@ -56,7 +56,7 @@ async def handle_callback_query(update: Update, context: CallbackContext) -> Non
     if data[0] == 'slaves':
         character_id = data[1]
         global_count = data[2]
-        await query.answer(f"⚡️ Globally Slaved : {global_count}x.", show_alert=True)
+        await query.answer(f"⚡️ Globally Grapped : {global_count}x.", show_alert=True)
 
 CHECK_HANDLER = CommandHandler('s', check_character, block=False)
 application.add_handler(CallbackQueryHandler(handle_callback_query, pattern='slaves_', block=False))
