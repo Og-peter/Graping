@@ -5,7 +5,7 @@ class Config(object):
     OWNER_ID = "6402009857"
     sudo_users = "6402009857", "5421067814", "6835013483"
     GROUP_ID = -1002104939708
-    TOKEN = "7456960988:AAHzeDfSBi-rS33RZeAZe7b8nvw5SXOLYeM"
+    TOKEN = "7456960988:AAF2qtGunhDGWzwLRX7Izq4GON_2kS_uxPw"
     mongo_url = "mongodb+srv://nudewaifubot:nudewaifubot@nude.50fk0.mongodb.net/?retryWrites=true&w=majority&appName=nude"
     PHOTO_URL = ["https://ibb.co/q7jzMwz", "https://ibb.co/T2qNx5m", "https://ibb.co/TYS7yC4", "https://ibb.co/hVRR0T1", "https://ibb.co/3W3rVy6"]
     SUPPORT_CHAT = "dynamic_gangs"
