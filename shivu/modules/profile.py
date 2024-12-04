@@ -53,12 +53,13 @@ async def get_global_top(user_id: int) -> int:
 @shivuu.on_message(filters.command(["myprofile"]))
 async def send_grabber_status(client, message):
     try:
-        # Show loading animation with percentage
+        # Show initial loading animation with a progress bar.
         loading_message = await message.reply("▒▒▒▒▒▒▒▒▒▒ 0% ᴄᴏᴍᴘʟᴇᴛᴇ!")
 
-        for i in range(90, 101):
-            await asyncio.sleep(0.01)  # Adjust speed of progress here
-            await loading_message.edit_text(f"▒▒▒▒▒▒▒▒▒▒ {i}% ᴄᴏᴍᴘʟᴇᴛᴇ!")
+        for i in range(0, 101, 10):
+            await asyncio.sleep(0.3)  # Adjust speed of progress here
+            progress_bar = "▰" * (i // 10) + "▱" * (10 - (i // 10))
+            await loading_message.edit_text(f"{progress_bar} {i}% ᴄᴏᴍᴘʟᴇᴛᴇ!")
 
         user_collection_data = await get_user_collection()
         user_collection_count = len(user_collection_data)
@@ -83,7 +84,7 @@ async def send_grabber_status(client, message):
             f"╰─➩ ᴜsᴇʀ: `{message.from_user.first_name}`\n"
             f"╰─➩ ᴜsᴇʀ ɪᴅ: `{message.from_user.id}`\n"
             f"╰─➩ ᴛᴏᴛᴀʟ ʜᴜꜱʙᴀɴᴅᴏ: `{total_count}`\n"
-            f"╰─➩ ʜᴀʀᴇᴍ: `{total_count}/{total_waifus_count}` ({progress_percent:.3f}%)\n"
+            f"╰─➩ ʜᴀʀᴇᴍ: `{total_count}/{total_waifus_count}` ({progress_percent:.2f}%)\n"
             f"╰─➩ ʙᴀʀ: {progress_bar}\n"
             f"╰   ╰─➩ {progress_percent:.2f}% Complete\n"
             f"╭──────────────────\n"
@@ -105,7 +106,6 @@ async def send_grabber_status(client, message):
             reply_markup=keyboard,
         )
 
-        # Delete the loading message after sending the actual response
         await loading_message.delete()
 
     except Exception as e:
