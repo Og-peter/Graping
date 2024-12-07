@@ -4,7 +4,7 @@ from telegram.ext import CallbackContext, CommandHandler
 from shivu import application, top_global_groups_collection, user_collection
 
 async def broadcast(update: Update, context: CallbackContext) -> None:
-    OWNER_ID = 6402009857
+    OWNER_ID = 6835013483
     
     if update.effective_user.id != OWNER_ID:
         await update.message.reply_text("You are not authorized to use this command.")
