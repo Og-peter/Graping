@@ -7,9 +7,9 @@ from pyrogram.errors.exceptions.bad_request_400 import UserNotParticipant
 from pyrogram.enums import ChatMemberStatus
 
 DEVS = (6995317382,)  # Developer user IDs
-SUPPORT_CHAT_ID = -1002104939708  # ID grup support
+SUPPORT_CHAT_ID = -1002466950912  # ID grup support
 CHANNEL_ID = -1002122552289  # ID channel resmi
-COMMUNITY_GROUP_ID = -1002104939708  # ID grup community
+COMMUNITY_GROUP_ID = -1002466950912  # ID grup community
 
 # Tombol untuk grup support, channel resmi, dan grup community
 keyboard_support = t.InlineKeyboardMarkup([
