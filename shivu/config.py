@@ -10,7 +10,7 @@ class Config(object):
     PHOTO_URL = ["https://ibb.co/q7jzMwz", "https://ibb.co/T2qNx5m", "https://ibb.co/TYS7yC4", "https://ibb.co/hVRR0T1", "https://ibb.co/3W3rVy6"]
     SUPPORT_CHAT = "Dyna_community"
     UPDATE_CHAT = "dynamic_supports"
-    BOT_USERNAME = "waifu_pro_bot"
+    BOT_USERNAME = "Grap_Waifu_Bot"
     CHARA_CHANNEL_ID = "-1002417394982"
     api_id = 24698455
     api_hash = "00d4cd57b1fb369ea65563d40c9c2494"
