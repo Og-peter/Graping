@@ -41,7 +41,7 @@ async def start(client, message):
         sudo_user = await app.get_users(message.from_user.id)
         sudo_user_first_name = sudo_user.first_name
         await message.reply_text(f"ʜᴇʟʟᴏ [{sudo_user_first_name}](tg://user?id={message.from_user.id})!", reply_markup=ReplyKeyboardMarkup(
-            [[KeyboardButton("● ᴀᴅᴍɪɴ ᴘᴀɴᴇʟ ●")]],
+            [[KeyboardButton("⚙ Admin panel ⚙")]],
             resize_keyboard=True
         ))
 
