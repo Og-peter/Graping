@@ -28,7 +28,7 @@ keyboard_both = t.InlineKeyboardMarkup([
 keyboard_all = t.InlineKeyboardMarkup([
     [t.InlineKeyboardButton("Official Grap W/H Groups", url="https://t.me/Dyna_community")],
     [t.InlineKeyboardButton("Official Grap W/H", url="https://t.me/Seizer_updates")],
-    [t.InlineKeyboardButton("Community Groups", url="https://t.me/dynamic_gangs")]
+    [t.InlineKeyboardButton("Community Groups", url="https://t.me/Dyna_community")]
 ])
 
 # Fungsi untuk memeriksa keanggotaan pengguna
