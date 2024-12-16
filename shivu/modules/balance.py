@@ -140,7 +140,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "💰 Thank you for using our service!"
     )
     await update.message.reply_photo(
-        photo="https://example.com/success_image.jpg",  # Replace with your actual success image URL
+        photo="https://files.catbox.moe/b861sv.jpg",  # Replace with your actual success image URL
         caption=success_message,
         parse_mode=ParseMode.HTML
     )
