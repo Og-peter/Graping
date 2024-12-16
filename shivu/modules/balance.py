@@ -329,10 +329,10 @@ async def daily_reward(_, message):
     [[InlineKeyboardButton("💰 Claim Treasure 💰", callback_data=f"claim_tesure_{reward}")]]
 )
 
-await message.reply_text(
-    "❰ 𝗧 𝗥 𝗘 𝗔 𝗦 𝗨 𝗥 𝗘 🧧 ❱\n\n"
-    "◍ Click the button below to claim your treasure!\n"
-    f"💸 Reward: ₩`{reward:,}`",
+    await message.reply_text(
+        "❰ 𝗧 𝗥 𝗘 𝗔 𝗦 𝗨 𝗥 𝗘 🧧 ❱\n\n"
+        "◍ Click the button below to claim your treasure!\n"
+        f"💸 Reward: ₩`{reward:,}`",
     reply_markup=keyboard.dict() if hasattr(keyboard, "dict") else keyboard
 )
 
