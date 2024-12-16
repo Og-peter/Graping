@@ -24,7 +24,13 @@ ban_user_ids = {5553813115}
 logs_group_id = -1001992198513
 logs = {logs_group_id}
 async def send_start_button(chat_id):
-    await app.send_message(chat_id, "🚀 You need to register first by starting the bot in DM. Type `/start` to begin your journey!")
+    await app.send_message(
+        chat_id,
+        "🔔 **Welcome!**\n\nTo register, you need to start the bot in private chat. Simply click the **Start** button below to begin your journey!",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("Start", url=f"https://t.me/<your_bot_username>?start=start")]]
+        )
+    )
 
 
 @app.on_message(filters.command(["sinv", "balance", "bal", "wealth"]))
