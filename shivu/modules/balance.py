@@ -31,24 +31,38 @@ async def send_start_button(chat_id):
 async def check_balance(_, message: Message):
     user_id = message.from_user.id
     replied_user_id = None
-    
+
     if message.reply_to_message:
         replied_user_id = message.reply_to_message.from_user.id
-    
-    # Check if the command was used as a reply
+
+    # Use the replied user's ID if the command is a reply
     if replied_user_id:
         user_id = replied_user_id
-    
-    # Check if the user is registered
+
+    # Fetch user data from the database
     user_data = await user_collection.find_one({'id': user_id})
     if not user_data:
         await send_start_button(message.chat.id)
         return
+
+    # Retrieve and format balance
     balance = user_data.get('balance', 0)
     formatted_balance = "{:,.0f}".format(balance)
     first_name = user_data.get('first_name', 'User')
-    # Reply to the user with their balance
-    await message.reply_text(f"{first_name}'s Wealth: ₩`{formatted_balance}`[.](https://files.catbox.moe/fruhx3.mp4)")
+
+    # Generate dynamic responses with video URL
+    video_url = "https://files.catbox.moe/fruhx3.mp4"
+    responses = [
+        f"💰 *{first_name}'s Treasury*: ₩`{formatted_balance}`\n[.]({video_url})",
+        f"🌟 *{first_name}*, your fortune is ₩`{formatted_balance}`!\n[.]({video_url})",
+        f"📊 Wealth report for *{first_name}*: ₩`{formatted_balance}`\n[.]({video_url})",
+        f"🏦 *{first_name}'s Vault*: ₩`{formatted_balance}`\n[.]({video_url})",
+        f"✨ *{first_name}*, your account sparkles with ₩`{formatted_balance}`.\n[.]({video_url})"
+    ]
+    unique_message = random.choice(responses)
+
+    # Reply with the dynamic balance message
+    await message.reply_text(unique_message, disable_web_page_preview=False)
     
 # Command: Pay
 async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
