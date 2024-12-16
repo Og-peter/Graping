@@ -326,14 +326,15 @@ async def daily_reward(_, message):
 
     # Button to claim reward
     keyboard = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("💰 Claim Treasure 💰", callback_data=f"claim_tesure_{reward}")]]
-    )
-    await message.reply_text(
-        "❰ 𝗧 𝗥 𝗘 𝗔 𝗦 𝗨 𝗥 𝗘 🧧 ❱\n\n"
-        "◍ Click the button below to claim your treasure!\n"
-        f"💸 Reward: ₩`{reward:,}`",
-        reply_markup=keyboard
-    )
+    [[InlineKeyboardButton("💰 Claim Treasure 💰", callback_data=f"claim_tesure_{reward}")]]
+)
+
+await message.reply_text(
+    "❰ 𝗧 𝗥 𝗘 𝗔 𝗦 𝗨 𝗥 𝗘 🧧 ❱\n\n"
+    "◍ Click the button below to claim your treasure!\n"
+    f"💸 Reward: ₩`{reward:,}`",
+    reply_markup=keyboard.dict() if hasattr(keyboard, "dict") else keyboard
+)
 
 @bot.on_callback_query(filters.regex(r"^claim_tesure_(\d+)$"))
 async def claim_tesure_reward(_, callback_query):
