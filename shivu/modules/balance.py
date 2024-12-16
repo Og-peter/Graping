@@ -57,7 +57,7 @@ async def check_balance(_, message: Message):
     first_name = user_data.get('first_name', 'User')
 
     # Generate dynamic responses with video URL
-    video_url = "https://files.catbox.moe/fruhx3.mp4"
+    video_url = "https://files.catbox.moe/yveko5.mp4"
     responses = [
         f"💰 *{first_name}'s Treasury*: ₩`{formatted_balance}`\n[.]({video_url})",
         f"🌟 *{first_name}*, your fortune is ₩`{formatted_balance}`!\n[.]({video_url})",
