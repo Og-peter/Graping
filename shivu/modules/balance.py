@@ -205,53 +205,39 @@ async def mtop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 @bot.on_message(filters.command("daily"))
 async def daily_reward(_, message):
     user_id = message.from_user.id
-
+    
     # Fetch user data
-    user_data = await user_collection.find_one(
-        {'id': user_id}, 
-        projection={'last_daily_reward': 1, 'balance': 1, 'streak': 1}
-    )
-
+    user_data = await user_collection.find_one({'id': user_id}, projection={'last_daily_reward': 1, 'balance': 1})
+    
+    # If the user is not found in the database, prompt them to start/register
     if not user_data:
-        await message.reply_text("❌ **You are not registered yet. Use /start to begin your journey!**")
+        await send_start_button(message.chat.id)
         return
-
+    
     last_claimed_date = user_data.get('last_daily_reward')
-    streak = user_data.get('streak', 0)
-
-    # Check if the reward was already claimed today
+    
+    # Check if the user has already claimed the reward today
     if last_claimed_date and last_claimed_date.date() == datetime.utcnow().date():
-        await message.reply_text(
-            "🚫 **You've already claimed your daily reward today!**\n"
-            "⏳ **Come back tomorrow to continue your streak!**"
-        )
+        await message.reply_text("You've already claimed your daily reward today. Come back tomorrow!")
         return
-
-    # Check if the streak was broken
-    if last_claimed_date and last_claimed_date.date() < (datetime.utcnow().date() - timedelta(days=1)):
-        streak = 0  # Reset streak if not claimed yesterday
-
-    # Increment streak and calculate reward
-    streak += 1
-    base_reward = 50000
-    streak_bonus = streak * 1000  # Bonus increases with streak
-    total_reward = base_reward + streak_bonus
-
-    # Update the user's balance, streak, and last claimed date
+    
+    # Update the user's balance and set the last claimed date
     await user_collection.update_one(
         {'id': user_id},
-        {'$inc': {'balance': total_reward}, 
-         '$set': {'last_daily_reward': datetime.utcnow(), 'streak': streak}}
+        {'$inc': {'balance': 50000}, '$set': {'last_daily_reward': datetime.utcnow()}}
     )
-
-    # Respond with a detailed message
-    await message.reply_text(
-        "🎁 <b><u>❰ DAILY REWARDS ❱</u></b> 🎁\n\n"
-        f"💰 <b>Base Reward:</b> <code>₩{base_reward:,}</code>\n"
-        f"🔥 <b>Streak Bonus:</b> <code>₩{streak_bonus:,}</code>\n"
-        f"🏆 <b>Total Reward:</b> <code>₩{total_reward:,}</code>\n\n"
-        f"📅 <b>Current Streak:</b> {streak} days\n"
-            )
+    
+    # Send an initial message and update it with animation-like edits
+    msg = await message.reply_text("❰ 𝗥 𝗘 𝗪 𝗔 𝗥 𝗗 𝗦 🧧 ❱\n\nClaiming your reward...")
+    await asyncio.sleep(2)
+    await msg.edit_text("❰ 𝗥 𝗘 𝗪 𝗔 𝗥 𝗗 𝗦 🧧 ❱\n\n◍ **Processing reward...**")
+    await asyncio.sleep(2)
+    await msg.edit_text(
+        "❰ 𝗥 𝗘 𝗪 𝗔 𝗥 𝗗 𝗦 🧧 ❱\n\n"
+        "◍ **Daily reward claimed successfully!**\n"
+        "You gained ₩`50,000` 🎉\n\n"
+        "Come back tomorrow for more rewards!"
+    )
     
 @bot.on_message(filters.command("weekly"))
 async def weekly_reward(_, message):
