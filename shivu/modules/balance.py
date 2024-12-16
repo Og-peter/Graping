@@ -333,9 +333,8 @@ async def daily_reward(_, message):
         "❰ 𝗧 𝗥 𝗘 𝗔 𝗦 𝗨 𝗥 𝗘 🧧 ❱\n\n"
         "◍ Click the button below to claim your treasure!\n"
         f"💸 Reward: ₩`{reward:,}`",
-    reply_markup=keyboard.dict() if hasattr(keyboard, "dict") else keyboard
+    reply_markup=keyboard  # Pass InlineKeyboardMarkup directly
 )
-
 @bot.on_callback_query(filters.regex(r"^claim_tesure_(\d+)$"))
 async def claim_tesure_reward(_, callback_query):
     user_id = callback_query.from_user.id
