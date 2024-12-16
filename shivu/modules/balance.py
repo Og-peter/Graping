@@ -84,7 +84,8 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if sender_id in cooldowns and (time.time() - cooldowns[sender_id]) < 1200:
         remaining_time = int(1200 - (time.time() - cooldowns[sender_id]))
         await update.message.reply_text(
-            f"⏳ You can use /pay again in {remaining_time // 60} minutes and {remaining_time % 60} seconds.",
+            f"⏳ You can use /pay again in {remaining_time // 60} minutes and {remaining_time % 60} seconds.\n"
+            "If you need help, click the button below.",
             reply_markup=support_markup,
         )
         return
@@ -111,13 +112,13 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Sender balance check
     sender_data = await user_collection.find_one({'id': sender_id}, projection={'balance': 1})
     if not sender_data or sender_data.get('balance', 0) < amount:
-        await update.message.reply_text("❌ Insufficient balance for the transaction.")
+        await update.message.reply_text("❌ You don't have enough balance for this transaction.")
         return
 
     # Check for disallowed words in the command
     disallowed_words = ['negative', 'badword']  # Add any disallowed words here
     if any(word in update.message.text.lower() for word in disallowed_words):
-        await update.message.reply_text("🚫 Disallowed words detected in the payment message.")
+        await update.message.reply_text("🚫 Your message contains disallowed words. Please try again.")
         return
 
     # Process the payment
@@ -130,17 +131,21 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     recipient_name = recipient.first_name + (f" {recipient.last_name}" if recipient.last_name else "")
     recipient_username = f"@{recipient.username}" if recipient.username else "an anonymous user"
 
-    # Success message
+    # Success message with image
     new_balance = sender_data['balance'] - amount
     success_message = (
         f"✅ <b>Transaction Successful!</b>\n"
         f"💳 You sent <b>₩{amount:,}</b> to <b>{recipient_name}</b> ({recipient_username}).\n"
         f"🔢 <b>Your New Balance:</b> <code>₩{new_balance:,}</code>\n"
-        "📈 Keep growing your wealth!"
+        "💰 Thank you for using our service!"
     )
-    await update.message.reply_text(success_message, parse_mode=ParseMode.HTML)
+    await update.message.reply_photo(
+        photo="https://example.com/success_image.jpg",  # Replace with your actual success image URL
+        caption=success_message,
+        parse_mode=ParseMode.HTML
+    )
 
-    # Recipient notification
+    # Notify the recipient
     recipient_message = (
         f"🎉 <b>You've received a payment!</b>\n"
         f"💸 Amount: <b>₩{amount:,}</b>\n"
@@ -154,20 +159,13 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # If the recipient can't be notified
         await update.message.reply_text("⚠️ Payment was successful, but the recipient could not be notified.")
 
-    # Additional Feature: Optional Leaderboard Updates (if implemented)
-    # Example: await update_leaderboard(sender_id, recipient_id, amount)
-
-# Summary of Features Added
-# 1. **Improved Error Handling**:
-#    - Custom responses for invalid input, cooldowns, or disallowed words.
-# 2. **Recipient Notification**:
-#    - Notifies the recipient of a successful payment.
-# 3. **Detailed Success Message**:
-#    - Includes formatted amount and new balance.
-# 4. **Support Appeal Link**:
-#    - Inline keyboard for user support.
-# 5. **Balance Safeguards**:
-#    - Ensures users can't pay more than their balance or bypass limits.
+# Summary of Changes:
+# 1. **Image Only for Successful Payments**:
+#    - An image is sent *only* after a successful payment. All other messages (errors or warnings) are plain text.
+# 2. **Improved Error Messages**:
+#    - Friendly, concise, and clear messages for errors like insufficient balance or invalid input.
+# 3. **User-Friendly Messaging**:
+#    - Clean formatting for amounts and clear descriptions for users.
             
 async def mtop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Fetch top 10 users sorted by balance in descending order
