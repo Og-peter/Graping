@@ -28,7 +28,7 @@ async def send_start_button(chat_id):
         chat_id,
         "🔔 **Welcome!**\n\nTo register, you need to start the bot in private chat. Simply click the **Start** button below to begin your journey!",
         reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Start", url=f"https://t.me/<your_bot_username>?start=start")]]
+            [[InlineKeyboardButton("Start", url=f"https://t.me/Grap_Waifu_Bot?start=start")]]
         )
     )
 
