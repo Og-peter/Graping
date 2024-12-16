@@ -242,56 +242,39 @@ async def daily_reward(_, message):
 @bot.on_message(filters.command("weekly"))
 async def weekly_reward(_, message):
     user_id = message.from_user.id
-
+    
     # Fetch user data
-    user_data = await user_collection.find_one(
-        {'id': user_id}, 
-        projection={'last_weekly_reward': 1, 'balance': 1, 'weekly_streak': 1}
-    )
-
+    user_data = await user_collection.find_one({'id': user_id}, projection={'last_weekly_reward': 1, 'balance': 1})
+    
+    # If the user is not found in the database, prompt them to start/register
     if not user_data:
-        await message.reply_text("❌ **You are not registered yet. Use /start to begin your journey!**")
+        await send_start_button(message.chat.id)
         return
-
+    
     last_weekly_date = user_data.get('last_weekly_reward')
-    weekly_streak = user_data.get('weekly_streak', 0)
-
-    # Check if the reward was already claimed this week
-    current_week = datetime.utcnow().isocalendar()[1]  # Current week number
-    last_week = last_weekly_date.isocalendar()[1] if last_weekly_date else -1
-
-    if last_weekly_date and last_week == current_week:
-        await message.reply_text(
-            "🚫 **You've already claimed your weekly reward for this week!**\n"
-            "⏳ **Come back next week to continue your streak!**"
-        )
+    
+    # Check if the user has already claimed the reward this week
+    if last_weekly_date and last_weekly_date.date() == datetime.utcnow().date():
+        await message.reply_text("You've already claimed your weekly reward of this week.")
         return
-
-    # Check if the streak was broken
-    if last_weekly_date and last_week < current_week - 1:
-        weekly_streak = 0  # Reset streak if skipped a week
-
-    # Increment streak and calculate reward
-    weekly_streak += 1
-    base_reward = 250000
-    streak_bonus = weekly_streak * 50000  # Bonus increases with streak
-    total_reward = base_reward + streak_bonus
-
-    # Update the user's balance, weekly streak, and last claimed date
+    
+    # Update the user's balance and set the last claimed date
     await user_collection.update_one(
         {'id': user_id},
-        {'$inc': {'balance': total_reward}, 
-         '$set': {'last_weekly_reward': datetime.utcnow(), 'weekly_streak': weekly_streak}}
+        {'$inc': {'balance': 250000}, '$set': {'last_weekly_reward': datetime.utcnow()}}
     )
-
-    # Respond with a detailed message
-    await message.reply_text(
-        "🎁 <b><u>❰ WEEKLY REWARDS ❱</u></b> 🎁\n\n"
-        f"💰 <b>Base Reward:</b> <code>₩{base_reward:,}</code>\n"
-        f"🔥 <b>Streak Bonus:</b> <code>₩{streak_bonus:,}</code>\n"
-        f"🏆 <b>Total Reward:</b> <code>₩{total_reward:,}</code>\n\n"
-        f"📅 <b>Current Streak:</b> {weekly_streak} weeks\n"
-        )
+    
+    # Send an initial message and update it with animation-like edits
+    msg = await message.reply_text("❰ 𝗥 𝗘 𝗪 𝗔 𝗥 𝗗 𝗦 🧧 ❱\n\nClaiming your weekly reward...")
+    await asyncio.sleep(2)
+    await msg.edit_text("❰ 𝗥 𝗘 𝗪 𝗔 𝗥 𝗗 𝗦 🧧 ❱\n\n◍ **Processing reward...**")
+    await asyncio.sleep(2)
+    await msg.edit_text(
+        "❰ 𝗥 𝗘 𝗪 𝗔 𝗥 𝗗 𝗦 🧧 ❱\n\n"
+        "◍ **Weekly reward claimed successfully!**\n"
+        "You gained ₩`250,000` 🎉\n\n"
+        "Come back next week for more rewards!"
+    )
 
 # Assuming `user_collection` and `send_start_button` are already defined
 # Dictionary to track user cooldowns
