@@ -281,86 +281,95 @@ async def weekly_reward(_, message):
 user_last_command_times = {}
 
 @bot.on_message(filters.command("tesure"))
-async def tesure(_, message: Message):
-    # Extract user information
+async def daily_reward(_, message):
     user_id = message.from_user.id
-    first_name = message.from_user.first_name.strip() if message.from_user.first_name else ""
+    first_name = message.from_user.first_name.strip()
     last_name = message.from_user.last_name.strip() if message.from_user.last_name else ""
     current_time = datetime.utcnow()
 
-    # Cooldown for sending commands too quickly
-    if user_id in user_last_command_times:
-        time_since_last_command = (current_time - user_last_command_times[user_id]).total_seconds()
-        if time_since_last_command < 5:
-            await message.reply_text("⏳ **You're sending commands too quickly! Please wait a moment.**")
-            return
-
-    # Update the user's last command time
+    # Check if the user is sending commands too quickly
+    if user_id in user_last_command_times and (current_time - user_last_command_times[user_id]).total_seconds() < 5:
+        await message.reply_text("You are sending commands too quickly. Please wait for a moment.")
+        return
+    
+    # Update the last command time
     user_last_command_times[user_id] = current_time
 
-    # Check for required and disallowed tags
-    required_tag = "˹ 𝐃ʏɴᴧϻɪᴄ ˼"
-    disallowed_tag = "⸻꯭፝֟͠DCS 𐀔"
+    # Debug: Check user's name
+    print(f"Debug: User's first name is '{first_name}', last name is '{last_name}'") 
 
-    if required_tag not in first_name and required_tag not in last_name:
-        await message.reply_text(
-            f"🚫 **Please include `{required_tag}` in your first or last name to use this command.**"
-        )
+    # Check for specific tags in both first and last name
+    if "बदमोस" not in first_name and "बदमोस" not in last_name:
+        await message.reply_text("Please set `बदमोस` in your first or last name to use this command.")
         return
-
-    if disallowed_tag in first_name or disallowed_tag in last_name:
-        await message.reply_text(
-            f"⚠️ **Please remove the tag `{disallowed_tag}` and only use `{required_tag}` to access this feature.**"
-        )
+    if "𝘿𝙍𝘼𝙂𝙊𝙉𝙎⃟🐉" in first_name or "𝘿𝙍𝘼𝙂𝙊𝙉𝙎⃟🐉" in last_name:
+        await message.reply_text("Please remove other tags like `𝘿𝙍𝘼𝙂𝙊𝙉𝙎⃟🐉` and only use `बदमोस` in your name.")
         return
-
-    # Retrieve user data from the database
+    
     user_data = await user_collection.find_one({'id': user_id}, projection={'last_tesure_reward': 1, 'balance': 1})
-
     if not user_data:
         await send_start_button(message.chat.id)
         return
 
+    # Check cooldown time
     last_claimed_time = user_data.get('last_tesure_reward')
     if last_claimed_time:
         last_claimed_time = last_claimed_time.replace(tzinfo=None)
-
-    # Check if cooldown period (30 minutes) has passed
-    cooldown_period = timedelta(minutes=30)
-    if last_claimed_time and (current_time - last_claimed_time) < cooldown_period:
-        remaining_time = cooldown_period - (current_time - last_claimed_time)
+    if last_claimed_time and (current_time - last_claimed_time) < timedelta(minutes=30):
+        remaining_time = timedelta(minutes=30) - (current_time - last_claimed_time)
         minutes, seconds = divmod(remaining_time.seconds, 60)
-        await message.reply_text(f"⏰ **Try again in `{minutes}:{seconds:02}` minutes!**")
+        await message.reply_text(f"Try again in `{minutes}:{seconds}` minutes.")
         return
 
-    # Calculate reward
-    reward = random.randint(5_000_000, 10_000_000)
-    if reward > 9_500_000:
-        luck_factor = "🌟 Ultra Lucky! 🌟"
-    elif reward > 7_500_000:
-        luck_factor = "🔥 Very Lucky!"
-    else:
-        luck_factor = "💎 Lucky!"
+    # Generate random reward
+    reward = random.randint(5000000, 10000000)
 
-    # Update the user's balance and last claimed time
+    # Button to claim reward
+    keyboard = InlineKeyboardMarkup(
+        [[InlineKeyboardButton("💰 Claim Treasure 💰", callback_data=f"claim_tesure_{reward}")]]
+    )
+    await message.reply_text(
+        "❰ 𝗧 𝗥 𝗘 𝗔 𝗦 𝗨 𝗥 𝗘 🧧 ❱\n\n"
+        "◍ Click the button below to claim your treasure!\n"
+        f"💸 Reward: ₩`{reward:,}`",
+        reply_markup=keyboard
+    )
+
+@bot.on_callback_query(filters.regex(r"^claim_tesure_(\d+)$"))
+async def claim_tesure_reward(_, callback_query):
+    user_id = callback_query.from_user.id
+    reward = int(callback_query.data.split("_")[-1])
+    current_time = datetime.utcnow()
+
+    # Fetch user data
+    user_data = await user_collection.find_one({'id': user_id}, projection={'last_tesure_reward': 1, 'balance': 1})
+    if not user_data:
+        await callback_query.answer("Please start the bot first!", show_alert=True)
+        return
+
+    # Check cooldown
+    last_claimed_time = user_data.get('last_tesure_reward')
+    if last_claimed_time:
+        last_claimed_time = last_claimed_time.replace(tzinfo=None)
+    if last_claimed_time and (current_time - last_claimed_time) < timedelta(minutes=30):
+        remaining_time = timedelta(minutes=30) - (current_time - last_claimed_time)
+        minutes, seconds = divmod(remaining_time.seconds, 60)
+        await callback_query.answer(f"Try again in {minutes} minutes and {seconds} seconds!", show_alert=True)
+        return
+
+    # Update user's balance and last claimed time
     await user_collection.update_one(
         {'id': user_id},
         {'$inc': {'balance': reward}, '$set': {'last_tesure_reward': current_time}}
     )
 
-    # Send reward image and message
-    reward_image = "https://telegra.ph/file/1725558c206507d3e36ee.jpg"
-    await message.reply_photo(
-        photo=reward_image,
-        caption=(
-            "🎉 **❰ 𝗧 𝗥 𝗘 𝗔 𝗦 𝗨 𝗥 𝗘 🧧 ❱** 🎉\n\n"
-            f"🌟 **Treasure claimed successfully!**\n"
-            f"💰 **Reward:** <code>₩{reward:,}</code>\n"
-            f"{luck_factor}\n\n"
-            "📅 **Cooldown:** 30 minutes before you can claim again.\n"
-        ),
-        parse_mode="HTML"
-    )
+    # Notify the user
+    await callback_query.edit_message_text(
+        "❰ 𝗧 𝗥 𝗘 𝗔 𝗦 𝗨 𝗥 𝗘 🧧 ❱\n\n"
+        f"◍ Tesure claimed successfully!\n"
+        f"You gained ₩`{reward:,}`[.](https://te.legra.ph/file/660ae74763876ceb19f34.png)",
+        disable_web_page_preview=True
+)
     
 application.add_handler(CommandHandler("tops", mtop, block=False))
 application.add_handler(CommandHandler("pay", pay, block=False))
