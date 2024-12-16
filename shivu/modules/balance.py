@@ -299,11 +299,11 @@ async def daily_reward(_, message):
     print(f"Debug: User's first name is '{first_name}', last name is '{last_name}'") 
 
     # Check for specific tags in both first and last name
-    if "बदमोस" not in first_name and "बदमोस" not in last_name:
-        await message.reply_text("Please set `बदमोस` in your first or last name to use this command.")
+    if "˹ 𝐃ʏɴᴧϻɪᴄ ˼" not in first_name and "˹ 𝐃ʏɴᴧϻɪᴄ ˼" not in last_name:
+        await message.reply_text("Please set `˹ 𝐃ʏɴᴧϻɪᴄ ˼` in your first or last name to use this command.")
         return
     if "𝘿𝙍𝘼𝙂𝙊𝙉𝙎⃟🐉" in first_name or "𝘿𝙍𝘼𝙂𝙊𝙉𝙎⃟🐉" in last_name:
-        await message.reply_text("Please remove other tags like `𝘿𝙍𝘼𝙂𝙊𝙉𝙎⃟🐉` and only use `बदमोस` in your name.")
+        await message.reply_text("Please remove other tags like `𝘿𝙍𝘼𝙂𝙊𝙉𝙎⃟🐉` and only use `˹ 𝐃ʏɴᴧϻɪᴄ ˼` in your name.")
         return
     
     user_data = await user_collection.find_one({'id': user_id}, projection={'last_tesure_reward': 1, 'balance': 1})
