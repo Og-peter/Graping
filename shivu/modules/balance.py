@@ -367,7 +367,7 @@ async def claim_tesure_reward(_, callback_query):
     await callback_query.edit_message_text(
         "❰ 𝗧 𝗥 𝗘 𝗔 𝗦 𝗨 𝗥 𝗘 🧧 ❱\n\n"
         f"◍ Tesure claimed successfully!\n"
-        f"You gained ₩`{reward:,}`[.](https://te.legra.ph/file/660ae74763876ceb19f34.png)",
+        f"You gained ₩`{reward:,}`[.](https://files.catbox.moe/ic7lpw.mp4)",
         disable_web_page_preview=True
 )
     
