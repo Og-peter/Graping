@@ -1,9 +1,10 @@
 import os
 import html
+import random
 import asyncio
 from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CommandHandler, CallbackContext, CallbackQueryHandler
+from telegram.ext import CommandHandler, CallbackContext, CallbackQueryHandler, MessageHandler, filters
 from shivu import application, user_collection, collection
 
 async def get_global_rank(username: str) -> int:
@@ -61,8 +62,11 @@ async def my_profile(update: Update, context: CallbackContext):
             filled_blocks = int((character_percentage / 100) * progress_bar_length)
             progress_bar = "▰" * filled_blocks + "▱" * (progress_bar_length - filled_blocks)
 
-            # Profile details
-            profile_pic_url = "https://files.catbox.moe/m549da.jpg"
+            # Profile picture
+            profile_pic = user_data.get("profile_pic")
+            if not profile_pic and characters:
+                profile_pic = random.choice(characters).get("image_url", None)
+
             user_tag = f"<a href='tg://user?id={user_id}'>{html.escape(user_first_name)}</a>"
             profile_message = (
                 f"╭── ˹ ɪɴғᴏʀᴍᴀᴛɪᴏɴ ˼ ──•\n"
@@ -90,13 +94,21 @@ async def my_profile(update: Update, context: CallbackContext):
                     text="🎉 **Profile Loaded!**",
                     parse_mode="Markdown"
                 )
-                await context.bot.send_photo(
-                    chat_id=update.message.chat_id,
-                    photo=profile_pic_url,
-                    caption=profile_message,
-                    reply_markup=keyboard,
-                    parse_mode='HTML'
-                )
+                if profile_pic:
+                    await context.bot.send_photo(
+                        chat_id=update.message.chat_id,
+                        photo=profile_pic,
+                        caption=profile_message,
+                        reply_markup=keyboard,
+                        parse_mode='HTML'
+                    )
+                else:
+                    await context.bot.send_message(
+                        chat_id=update.message.chat_id,
+                        text=profile_message,
+                        reply_markup=keyboard,
+                        parse_mode='HTML'
+                    )
             except Exception as e:
                 print(f"Error in sending profile: {e}")
         else:
@@ -105,6 +117,31 @@ async def my_profile(update: Update, context: CallbackContext):
         print("No message to reply to.")
 
 application.add_handler(CommandHandler("myprofile", my_profile))
+
+async def setpic(update: Update, context: CallbackContext):
+    user_id = update.effective_user.id
+    if not update.message.reply_to_message:
+        await update.message.reply_text("❌ Please reply to an image, GIF, video, or sticker to set it as your profile picture.")
+        return
+
+    message = update.message.reply_to_message
+    media_id = None
+    if message.photo:
+        media_id = message.photo[-1].file_id
+    elif message.animation:
+        media_id = message.animation.file_id
+    elif message.video:
+        media_id = message.video.file_id
+    elif message.sticker:
+        media_id = message.sticker.file_id
+
+    if media_id:
+        await user_collection.update_one({"id": user_id}, {"$set": {"profile_pic": media_id}}, upsert=True)
+        await update.message.reply_text("✅ Profile picture has been set!")
+    else:
+        await update.message.reply_text("❌ Unsupported media type. Please reply to an image, GIF, video, or sticker.")
+
+application.add_handler(CommandHandler("setpic", setpic))
 
 async def button(update: Update, context: CallbackContext):
     query = update.callback_query
