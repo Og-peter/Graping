@@ -47,7 +47,7 @@ async def get_unique_characters(receiver_id, rarities=['🔵 Low', '🟢 Medium'
         return []
 
 # Command Handlers
-@bot.on_message(filters.command("startclaim") & filters.user(DEV_LIST))
+@bot.on_message(filters.command("startclaim") & filters.user(SPECIALGRADE))
 async def start_claim(_, message: t.Message):
     await claim_toggle("True")
     await message.reply_text(
@@ -56,7 +56,7 @@ async def start_claim(_, message: t.Message):
         "🔔 **Don't forget to check the group for more events!**"
     )
 
-@bot.on_message(filters.command("stopclaim") & filters.user(DEV_LIST))
+@bot.on_message(filters.command("stopclaim") & filters.user(SPECIALGRADE))
 async def stop_claim(_, message: t.Message):
     await claim_toggle("False")
     await message.reply_text(
@@ -165,7 +165,7 @@ async def claim_handler(_, message: t.Message):
     await message.reply_photo(photo=img_url, caption=reward_message)
 
 # Reset Cooldown Command
-@bot.on_message(filters.command("resetclaim") & filters.user(DEV_LIST))
+@bot.on_message(filters.command("resetclaim") & filters.user(SPECIALGRADE))
 async def reset_claim(_, message: t.Message):
     """Reset claim cooldown for all users."""
     global last_claim_time
