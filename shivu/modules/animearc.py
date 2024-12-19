@@ -18,50 +18,36 @@ ban_user_ids = {1234567890}
 anime_arcs = [
     {
         "arc": "Naruto - Pain's Assault",
-        "heroes": [
-            {"name": "Naruto Uzumaki", "img_url": "https://files.catbox.moe/naruto.jpg"},
-            {"name": "Kakashi Hatake", "img_url": "https://files.catbox.moe/kakashi.jpg"},
-        ],
+        "heroes": ["Naruto Uzumaki", "Kakashi Hatake"],
         "villains": ["Pain", "Konan"],
         "image": "https://files.catbox.moe/83rsnb.jpg",
     },
     {
         "arc": "One Piece - Marineford War",
-        "heroes": [
-            {"name": "Monkey D. Luffy", "img_url": "https://files.catbox.moe/luffy.jpg"},
-            {"name": "Whitebeard", "img_url": "https://files.catbox.moe/whitebeard.jpg"},
-        ],
+        "heroes": ["Monkey D. Luffy", "Whitebeard"],
         "villains": ["Akainu", "Blackbeard"],
         "image": "https://files.catbox.moe/urb2aa.jpg",
     },
     {
         "arc": "Dragon Ball - Cell Saga",
-        "heroes": [
-            {"name": "Goku", "img_url": "https://files.catbox.moe/goku.jpg"},
-            {"name": "Gohan", "img_url": "https://files.catbox.moe/gohan.jpg"},
-        ],
+        "heroes": ["Goku", "Gohan"],
         "villains": ["Cell", "Android 17"],
         "image": "https://files.catbox.moe/9arc3h.jpg",
     },
     {
         "arc": "Bleach - Hueco Mundo",
-        "heroes": [
-            {"name": "Ichigo Kurosaki", "img_url": "https://files.catbox.moe/ichigo.jpg"},
-            {"name": "Rukia Kuchiki", "img_url": "https://files.catbox.moe/rukia.jpg"},
-        ],
+        "heroes": ["Ichigo Kurosaki", "Rukia Kuchiki"],
         "villains": ["Ulquiorra", "Grimmjow"],
         "image": "https://files.catbox.moe/v6q5a1.jpg",
     },
     {
         "arc": "Attack on Titan - Shiganshina",
-        "heroes": [
-            {"name": "Eren Yeager", "img_url": "https://files.catbox.moe/eren.jpg"},
-            {"name": "Mikasa Ackerman", "img_url": "https://files.catbox.moe/mikasa.jpg"},
-        ],
+        "heroes": ["Eren Yeager", "Mikasa Ackerman"],
         "villains": ["Zeke Yeager", "Reiner Braun"],
         "image": "https://files.catbox.moe/b814or.jpg",
     },
 ]
+
 
 # List of rarities
 rarities = ['🔵 Low', '🟢 Medium', '🔴 High', '🟡 Nobel', '🔮 Limited']  # Example rarities
