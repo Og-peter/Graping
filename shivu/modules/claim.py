@@ -5,13 +5,13 @@ from shivu import shivuu as app, SPECIALGRADE
 from shivu import shivuu as bot
 from shivu import user_collection, collection
 from datetime import datetime, timedelta
-from pyrogram.errors.exceptions.bad_request_400 import UserNotParticipant
+from pyrogram.errors import UserNotParticipant
 
 # Constants
 SUPPORT_CHAT_ID = -1002466950912  # Replace with your group chat ID
 SUPPORT_URL = "https://t.me/Dyna_community"
 
-# Advanced Keyboard
+# Inline Keyboards
 join_keyboard = InlineKeyboardMarkup([
     [InlineKeyboardButton("🌌 Join Support Group 🌌", url=SUPPORT_URL)]
 ])
@@ -21,29 +21,29 @@ last_claim_time = {}
 
 # Helper Functions
 async def claim_toggle(state):
-    """Toggle the claim state between enabled/disabled."""
+    """Toggle the claim system between enabled and disabled."""
     await collection.update_one({}, {"$set": {"claim": state}}, upsert=True)
 
 async def get_claim_state():
-    """Fetch the claim system's current state."""
+    """Get the current claim system state."""
     doc = await collection.find_one({})
     return doc.get("claim", "False")
 
 async def add_claim_user(user_id):
-    """Mark the user as claimed."""
+    """Mark the user as having claimed a reward."""
     await user_collection.update_one({"id": user_id}, {"$set": {"claim": True}}, upsert=True)
 
-async def get_unique_characters(receiver_id, rarities=['🔵 Low', '🟢 Medium', '🔴 High', '🟡 Nobel', '🔮 Limited', '🥵 Nudes']):
-    """Get a unique character for the claiming process."""
+async def get_unique_characters(rarities):
+    """Fetch a unique character based on rarity."""
     try:
         pipeline = [
-            {'$match': {'rarity': {'$in': rarities}}},
-            {'$sample': {'size': 1}}  # Get a random character
+            {"$match": {"rarity": {"$in": rarities}}},
+            {"$sample": {"size": 1}}
         ]
         cursor = collection.aggregate(pipeline)
         return await cursor.to_list(length=1)
     except Exception as e:
-        print(f"Error in fetching character: {e}")
+        print(f"Error fetching character: {e}")
         return []
 
 # Command Handlers
@@ -70,14 +70,14 @@ async def claim_handler(_, message: t.Message):
     chat_id = message.chat.id
     mention = message.from_user.mention
 
-    # Group Restriction
+    # Restrict to specific group
     if chat_id != SUPPORT_CHAT_ID:
         return await message.reply_text(
             f"🔒 **This command can only be used in the** [Support Group]({SUPPORT_URL}).",
             disable_web_page_preview=True
         )
 
-    # Join Group Check
+    # Check group membership
     try:
         await bot.get_chat_member(SUPPORT_CHAT_ID, user_id)
     except UserNotParticipant:
@@ -86,8 +86,8 @@ async def claim_handler(_, message: t.Message):
             reply_markup=join_keyboard
         )
 
-    # Channel Subscription Check
-    channel_username = "dynamic_supports"  # Replace with your channel's username
+    # Check channel subscription
+    channel_username = "dynamic_supports"  # Replace with your channel username
     try:
         await bot.get_chat_member(channel_username, user_id)
     except UserNotParticipant:
@@ -100,57 +100,48 @@ async def claim_handler(_, message: t.Message):
             ])
         )
 
-    # Claim System Check
+    # Check claim state
     claim_state = await get_claim_state()
     if claim_state == "False":
-        return await message.reply_text(
-            "❌ **Claiming is currently disabled.**\n"
-            "🕒 **Stay tuned for updates.**"
-        )
+        return await message.reply_text("❌ **Claiming is currently disabled.**\n🕒 **Stay tuned for updates.**")
 
     # Cooldown Check
     now = datetime.now()
-    if user_id in last_claim_time:
-        last_claim_date = last_claim_time[user_id]
-        if last_claim_date.date() == now.date():
-            next_claim = (last_claim_date + timedelta(days=1)).strftime("%H:%M:%S")
-            return await message.reply_text(
-                f"🕒 **You've already claimed today!**\n"
-                f"⏳ **Next Claim Available:** `{next_claim}`"
-            )
+    if user_id in last_claim_time and last_claim_time[user_id].date() == now.date():
+        next_claim = (last_claim_time[user_id] + timedelta(days=1)).strftime("%H:%M:%S")
+        return await message.reply_text(
+            f"🕒 **You've already claimed today!**\n⏳ **Next Claim Available:** `{next_claim}`"
+        )
 
-    # Claim Animation
-    claiming_messages = [
-        "❄️",
-        "🌸",
-        "🌧️",
-        "🐋"
-    ]
-    temp_msg = await message.reply_text(claiming_messages[0])
-    for msg in claiming_messages[1:]:
-        await asyncio.sleep(1.5)
-        await temp_msg.edit(msg)
+    # Claiming Animation
+    animation = ["❄️", "🌸", "🌧️", "🐋", "🌟", "🎉"]
+    temp_msg = await message.reply_text(animation[0])
+    for icon in animation[1:]:
+        await asyncio.sleep(0.8)
+        await temp_msg.edit(icon)
 
-    # Fetch Character
-    characters = await get_unique_characters(user_id)
+    # Fetch character
+    rarities = ['🔵 Low', '🟢 Medium', '🔴 High', '🟡 Nobel', '🔮 Limited', '🥵 Nudes']
+    characters = await get_unique_characters(rarities)
     if not characters:
         return await temp_msg.edit("⚠️ **No characters available. Try again later!**")
 
-    # Save and Send Character
     character = characters[0]
     img_url = character.get('img_url', '')
     char_name = character.get('name', 'Unknown')
     char_anime = character.get('anime', 'Unknown')
     char_rarity = character.get('rarity', '🔵 Low')
 
+    # Save character and cooldown
     last_claim_time[user_id] = now
     await add_claim_user(user_id)
     await user_collection.update_one(
         {"id": user_id},
-        {"$push": {"characters": character}}
+        {"$push": {"characters": character}},
+        upsert=True
     )
 
-    # Reward Message
+    # Send Reward
     reward_message = f"""
 🎉 **Congrats, {mention}!**
 
@@ -164,14 +155,11 @@ async def claim_handler(_, message: t.Message):
     await temp_msg.delete()
     await message.reply_photo(photo=img_url, caption=reward_message)
 
-# Reset Cooldown Command
 @bot.on_message(filters.command("resetclaim") & filters.user(SPECIALGRADE))
 async def reset_claim(_, message: t.Message):
-    """Reset claim cooldown for all users."""
     global last_claim_time
     last_claim_time.clear()
     await user_collection.update_many({}, {"$unset": {"claim": ""}})
     await message.reply_text(
-        "🔄 **All cooldowns have been reset!**\n"
-        "🎯 **Users can now claim again without waiting.**"
-    )
+        "🔄 **All cooldowns have been reset!**\n🎯 **Users can now claim again without waiting.**"
+        )
