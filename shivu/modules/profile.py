@@ -1,112 +1,118 @@
-from pyrogram import Client, filters
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from shivu import shivuu, collection, user_collection, group_user_totals_collection
+import os
+import html
 import asyncio
+from datetime import datetime
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import CommandHandler, CallbackContext, CallbackQueryHandler
+from shivu import application, user_collection, collection
 
-async def get_user_collection():
-    return await user_collection.find({}).to_list(length=None)
-
-async def get_progress_bar(user_waifus_count, total_waifus_count):
-    current = user_waifus_count
-    total = total_waifus_count
-    bar_width = 10
-
-    progress = current / total if total != 0 else 0
-    progress_percent = progress * 100
-
-    filled_width = int(progress * bar_width)
-    empty_width = bar_width - filled_width
-
-    progress_bar = "▰" * filled_width + "▱" * empty_width
-    status = f"{progress_bar}"
-    return status, progress_percent
-
-async def get_chat_top(chat_id: int, user_id: int) -> int:
+async def get_global_rank(username: str) -> int:
     pipeline = [
-        {"$match": {"group_id": chat_id}},
-        {"$sort": {"count": -1}},
-        {"$limit": 10}
-    ]
-    cursor = group_user_totals_collection.aggregate(pipeline)
-    leaderboard_data = await cursor.to_list(length=None)
-    
-    for i, user in enumerate(leaderboard_data, start=1):
-        if user.get('user_id') == user_id:
-            return i
-    
-    return 0
-
-async def get_global_top(user_id: int) -> int:
-    pipeline = [
-        {"$project": {"id": 1, "characters_count": {"$size": {"$ifNull": ["$characters", []]}}}},
-        {"$sort": {"characters_count": -1}}
+        {"$match": {"characters": {"$exists": True, "$ne": []}}},
+        {"$project": {"username": 1, "character_count": {"$size": "$characters"}}},
+        {"$sort": {"character_count": -1}}
     ]
     cursor = user_collection.aggregate(pipeline)
     leaderboard_data = await cursor.to_list(length=None)
-    
+    total_users = await user_collection.count_documents({})
     for i, user in enumerate(leaderboard_data, start=1):
-        if user.get('id') == user_id:
-            return i
-    
-    return 0
+        if user.get('username') == username:
+            return i, total_users
+    return 0, total_users
 
-@shivuu.on_message(filters.command(["myprofile"]))
-async def send_grabber_status(client, message):
-    try:
-        # Show initial loading animation with a progress bar.
-        loading_message = await message.reply("▒▒▒▒▒▒▒▒▒▒ 0% ᴄᴏᴍᴘʟᴇᴛᴇ!")
+async def my_profile(update: Update, context: CallbackContext):
+    if update.message:
+        # Animated loading message
+        loading_message = await context.bot.send_message(
+            chat_id=update.message.chat_id,
+            text="⏳ **Fetching your profile...**",
+            parse_mode="Markdown"
+        )
+        await asyncio.sleep(2)
 
-        for i in range(0, 101, 10):
-            await asyncio.sleep(0.3)  # Adjust speed of progress here
-            progress_bar = "▰" * (i // 10) + "▱" * (10 - (i // 10))
-            await loading_message.edit_text(f"{progress_bar} {i}% ᴄᴏᴍᴘʟᴇᴛᴇ!")
+        user_id = update.effective_user.id
+        user_data = await user_collection.find_one({'id': user_id})
 
-        user_collection_data = await get_user_collection()
-        user_collection_count = len(user_collection_data)
+        if user_data:
+            # User details
+            user_first_name = user_data.get('first_name', 'Unknown')
+            user_username = user_data.get('username', 'Unknown')
+            total_characters = await collection.count_documents({})
+            characters = user_data.get('characters', [])
+            characters_count = len(characters)
+            character_percentage = (characters_count / total_characters) * 100 if total_characters > 0 else 0
 
-        user_id = message.from_user.id
-        user = await user_collection.find_one({'id': user_id})
+            # Get rarity counts from user's collection
+            rarity_counts = {}
+            for char in characters:
+                rarity = char.get('rarity', '🔵 𝙇𝙊𝙒')
+                rarity_counts[rarity] = rarity_counts.get(rarity, 0) + 1
 
-        if user:
-            total_count = len(user.get('characters', []))
+            rarity_message = "\n".join([
+                f"⌠{rarity.split()[0]}⌡ Rarity: {' '.join(rarity.split()[1:])}: {count}"
+                for rarity, count in rarity_counts.items()
+            ])
+
+            # Global rank
+            global_rank, total_users = await get_global_rank(user_username)
+
+            # Progress bar
+            progress_bar_length = 10
+            filled_blocks = int((character_percentage / 100) * progress_bar_length)
+            progress_bar = "▰" * filled_blocks + "▱" * (progress_bar_length - filled_blocks)
+
+            # Profile details
+            profile_pic_url = "https://files.catbox.moe/m549da.jpg"
+            user_tag = f"<a href='tg://user?id={user_id}'>{html.escape(user_first_name)}</a>"
+            profile_message = (
+                f"╭── ˹ ɪɴғᴏʀᴍᴀᴛɪᴏɴ ˼ ──•\n"
+                f"┆\n"
+                f"┊◍ ɴᴀᴍᴇ: {user_tag}\n"
+                f"┆◍ ᴛᴏᴛᴀʟ ᴡᴀɪғᴜs ɪɴ ʙᴏᴛ: {total_characters}\n"
+                f"┊● ᴜsᴇʀ ᴄʜᴀʀᴀᴄᴛᴇʀs : {characters_count} ({character_percentage:.2f}%)\n"
+                f"┆● ᴅᴇᴠᴇʟᴏᴘᴍᴇɴᴛ ʙᴀʀ: {progress_bar}\n\n"
+                f"┆● ɢʟᴏʙᴀʟ ʀᴀɴᴋ: {global_rank} / {total_users}\n"
+                f"├─────────────────•\n"
+                f"┆   ❖ │ ʀᴀʀɪᴛʏ ᴄᴏᴜɴᴛ │ ❖\n"
+                f"├─────────────────•\n"
+                f"{rarity_message}\n"
+                f"╰─────────────────•"
+            )
+
+            close_button = InlineKeyboardButton("ᴄʟᴏsᴇ 🔖", callback_data="close")
+            keyboard = InlineKeyboardMarkup([[close_button]])
+
+            # Edit loading message with profile and delete loading message
+            try:
+                await context.bot.edit_message_text(
+                    chat_id=loading_message.chat_id,
+                    message_id=loading_message.message_id,
+                    text="🎉 **Profile Loaded!**",
+                    parse_mode="Markdown"
+                )
+                await context.bot.send_photo(
+                    chat_id=update.message.chat_id,
+                    photo=profile_pic_url,
+                    caption=profile_message,
+                    reply_markup=keyboard,
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                print(f"Error in sending profile: {e}")
         else:
-            total_count = 0
+            await loading_message.edit_text("❌ Unable to retrieve user information.")
+    else:
+        print("No message to reply to.")
 
-        total_waifus_count = await collection.count_documents({})
+application.add_handler(CommandHandler("myprofile", my_profile))
 
-        chat_top = await get_chat_top(message.chat.id, user_id)
-        global_top = await get_global_top(user_id)
+async def button(update: Update, context: CallbackContext):
+    query = update.callback_query
+    if query.data == "close":
+        try:
+            await query.message.delete()
+        except Exception as e:
+            print(f"Error in deleting message: {e}")
+    await query.answer()
 
-        progress_bar, progress_percent = await get_progress_bar(total_count, total_waifus_count)
-
-        grabber_status = (
-            f"╒════「𝗨𝗦𝗘𝗥 𝗣𝗥𝗢𝗙𝗜𝗟𝗘」\n"
-            f"╰─➩ ᴜsᴇʀ: `{message.from_user.first_name}`\n"
-            f"╰─➩ ᴜsᴇʀ ɪᴅ: `{message.from_user.id}`\n"
-            f"╰─➩ ᴛᴏᴛᴀʟ ʜᴜꜱʙᴀɴᴅᴏ: `{total_count}`\n"
-            f"╰─➩ ʜᴀʀᴇᴍ: `{total_count}/{total_waifus_count}` ({progress_percent:.2f}%)\n"
-            f"╰─➩ ʙᴀʀ: {progress_bar}\n"
-            f"╰   ╰─➩ {progress_percent:.2f}% Complete\n"
-            f"╭──────────────────\n"
-            f"├─➩ 🌍  𝘾𝙃𝘼𝙏 𝙏𝙊𝙋 : `{chat_top}`\n"
-            f"├─➩ 🌎  𝙂𝙇𝙊𝘽𝘼𝙇 𝙏𝙊𝙋 : `{global_top}`\n"
-            f"╰──────────────────"
-        )
-
-        user_photo = await client.download_media(message.from_user.photo.big_file_id)
-
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("sᴇᴇ ᴄᴏʟʟᴇᴄᴛɪᴏɴ", switch_inline_query_current_chat=f"collection.{user_id}")]
-        ])
-
-        await client.send_photo(
-            chat_id=message.chat.id,
-            photo=user_photo,
-            caption=grabber_status,
-            reply_markup=keyboard,
-        )
-
-        await loading_message.delete()
-
-    except Exception as e:
-        await message.reply(f"An error occurred: {e}")
+application.add_handler(CallbackQueryHandler(button))
