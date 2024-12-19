@@ -120,10 +120,10 @@ async def claim_handler(_, message: t.Message):
 
     # Claim Animation
     claiming_messages = [
-        "🌌 **Exploring the universe of characters...**",
-        "💫 **Scanning for the rarest treasures...**",
-        "🌟 **Preparing a legendary reward...**",
-        "✨ **Your destiny is about to unfold!**"
+        "❄️",
+        "🌸",
+        "🌧️",
+        "🐋"
     ]
     temp_msg = await message.reply_text(claiming_messages[0])
     for msg in claiming_messages[1:]:
