@@ -59,39 +59,33 @@ async def get_random_characters():
         print(f"Error fetching characters: {e}")
         return []
 
-# Battle command handler
-@bot.on_message(filters.command(["battle"]))
-async def battle(_, message: t.Message):
-    if not message.reply_to_message:
-        return await message.reply_text("⚠️ **Reply to another user to challenge them to a battle!**")
-    
-    challenger = message.from_user
-    opponent = message.reply_to_message.from_user
+# Battle confirmation callback
+@bot.on_callback_query(filters.regex(r"battle_confirm\|(\d+)\|(\d+)"))
+async def battle_confirmation(client: Client, callback_query: t.CallbackQuery):
+    challenger_id, opponent_id = map(int, callback_query.data.split("|")[1:])
+    user = callback_query.from_user
 
-    # Check if the opponent is the bot itself
-    if opponent.is_bot:
-        return await message.reply_text("🤖 **You can't battle against the bot! Challenge another user instead.**")
+    if user.id != opponent_id:
+        return await callback_query.answer("⚠️ Only the opponent can confirm this battle!", show_alert=True)
 
-    # Check if the challenger is replying to their own message
-    if challenger.id == opponent.id:
-        return await message.reply_text("⚠️ **You can't battle against yourself. Challenge someone else!**")
-
-    # Cooldown check for the challenger
-    current_time = time.time()
-    if challenger.id in user_cooldowns and current_time - user_cooldowns[challenger.id] < COOLDOWN_DURATION:
-        return await message.reply_text("⏳ **You need to wait before challenging someone again.**")
+    await callback_query.answer()
 
     # Start battle sequence
+    challenger = await bot.get_users(challenger_id)
+    opponent = await bot.get_users(opponent_id)
+
     challenger_move = random.choice(list(CHARACTERS.items()))
     opponent_move = random.choice(list(CHARACTERS.items()))
 
     # Send moves with videos
-    await message.reply_video(
+    await bot.send_video(
+        chat_id=callback_query.message.chat.id,
         video=challenger_move[1]['video_url'],
         caption=f"**{challenger.first_name} uses:** {challenger_move[1]['move']}"
     )
     await asyncio.sleep(2)
-    await message.reply_video(
+    await bot.send_video(
+        chat_id=callback_query.message.chat.id,
         video=opponent_move[1]['video_url'],
         caption=f"**{opponent.first_name} counters with:** {opponent_move[1]['move']}"
     )
@@ -119,15 +113,54 @@ async def battle(_, message: t.Message):
                 f"🥂 **Rarity:** {character['rarity']}\n"
                 f"⛩️ **Anime:** {character['anime']}\n\n"
             )
-        await message.reply_photo(
+        await bot.send_photo(
+            chat_id=callback_query.message.chat.id,
             photo=random_characters[0]['img_url'],
             caption=reward_message
         )
     else:
-        await message.reply_text("⚠️ **Something went wrong while fetching the reward. Please try again later.**")
+        await bot.send_message(
+            chat_id=callback_query.message.chat.id,
+            text="⚠️ **Something went wrong while fetching the reward. Please try again later.**"
+        )
 
     # Send a message about the loss
-    await message.reply_text(f"💀 **{loser.first_name} loses the battle. Better luck next time!**")
+    await bot.send_message(
+        chat_id=callback_query.message.chat.id,
+        text=f"💀 **{loser.first_name} loses the battle. Better luck next time!**"
+    )
 
-    # Set cooldown for the challenger
-    user_cooldowns[challenger.id] = current_time
+# Battle command handler
+@bot.on_message(filters.command(["battle"]))
+async def battle(_, message: t.Message):
+    if not message.reply_to_message:
+        return await message.reply_text("⚠️ **Reply to another user to challenge them to a battle!**")
+
+    challenger = message.from_user
+    opponent = message.reply_to_message.from_user
+
+    # Check if the opponent is the bot itself
+    if opponent.is_bot:
+        return await message.reply_text("🤖 **You can't battle against the bot! Challenge another user instead.**")
+
+    # Check if the challenger is replying to their own message
+    if challenger.id == opponent.id:
+        return await message.reply_text("⚠️ **You can't battle against yourself. Challenge someone else!**")
+
+    # Cooldown check for the challenger
+    current_time = time.time()
+    if challenger.id in user_cooldowns and current_time - user_cooldowns[challenger.id] < COOLDOWN_DURATION:
+        return await message.reply_text("⏳ **You need to wait before challenging someone again.**")
+
+    # Send confirmation button
+    confirm_markup = InlineKeyboardMarkup(
+        [[
+            InlineKeyboardButton("✅ Confirm", callback_data=f"battle_confirm|{challenger.id}|{opponent.id}"),
+            InlineKeyboardButton("❌ Reject", callback_data="battle_reject")
+        ]]
+    )
+    await message.reply_text(
+        f"⚔️ **{challenger.first_name} has challenged {opponent.first_name} to a battle!**\n\n"
+        f"🔹 {opponent.first_name}, please confirm or reject the challenge below:",
+        reply_markup=confirm_markup
+    )
