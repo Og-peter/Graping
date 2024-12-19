@@ -95,14 +95,29 @@ async def my_profile(update: Update, context: CallbackContext):
                     parse_mode="Markdown"
                 )
                 if profile_pic:
-                    await context.bot.send_photo(
-                        chat_id=update.message.chat_id,
-                        photo=profile_pic,
-                        caption=profile_message,
-                        reply_markup=keyboard,
-                        parse_mode='HTML'
-                    )
+                    try:
+                        # Try to send as a photo
+                        await context.bot.send_photo(
+                            chat_id=update.message.chat_id,
+                            photo=profile_pic,
+                            caption=profile_message,
+                            reply_markup=keyboard,
+                            parse_mode='HTML'
+                        )
+                    except Exception:
+                        try:
+                            # If sending as a photo fails, send as an animation
+                            await context.bot.send_animation(
+                                chat_id=update.message.chat_id,
+                                animation=profile_pic,
+                                caption=profile_message,
+                                reply_markup=keyboard,
+                                parse_mode='HTML'
+                            )
+                        except Exception as e:
+                            print(f"Error in sending profile as animation: {e}")
                 else:
+                    # Send without a media file if no profile pic exists
                     await context.bot.send_message(
                         chat_id=update.message.chat_id,
                         text=profile_message,
