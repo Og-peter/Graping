@@ -5,8 +5,9 @@ from shivu import collection, user_collection
 import time
 import random
 
-# Cooldown dictionary
+# Cooldown dictionary and streak tracker
 cooldowns = {}
+streaks = {}
 
 async def get_random_character(receiver_id, target_rarities=['🟡 Nobel', '🥵 Nudes']):
     try:
@@ -48,65 +49,93 @@ async def spin(_, message: t.Message):
     # Update cooldown
     cooldowns[user_id] = time.time()
 
-    # Simulating the spin animation
+    # Spin animation
     spin_animation = "🎰 Spinning... 🎰\n\n🔄 | 🔄 | 🔄"
     msg = await message.reply_text(spin_animation, quote=True)
     await asyncio.sleep(2)
 
-    spin_symbols = ["🍒", "💎", "⭐", "🍀", "🔥"]  # Extended symbols for more variety
-    spin_result = random.choices(spin_symbols, k=3)  # Generate three random symbols
-    outcome = random.choice(["jackpot", "rare", "medium", "lose"])  # Randomized outcomes
+    # Generate spin results
+    spin_symbols = ["🍒", "💎", "⭐", "🍀", "🔥", "🌟", "⚡"]
+    spin_result = random.choices(spin_symbols, k=3)
+    outcome = random.choice(["jackpot", "rare", "medium", "lose", "bonus"])
 
-    # Formatting the spin result
     formatted_result = f"🎰 | {spin_result[0]} | {spin_result[1]} | {spin_result[2]}"
 
+    # Handle outcomes
     if outcome == "jackpot":
-        # Jackpot case
         random_characters = await get_random_character(user_id)
         if random_characters:
             character = random_characters[0]
+            
+            # Add character to user's collection
             await user_collection.update_one(
                 {'id': user_id}, {'$push': {'characters': character}}, upsert=True
             )
-            await msg.edit_text(
-                f"{formatted_result}\n\n"
-                f"🍃 **Name:** {character['name']}\n"
-                f"⚜️ **Rarity:** {character['rarity']}\n"
-                f"⛩️ **Anime:** {character['anime']}\n\n"
-                f"🌟 Congratulations {mention}, you unlocked a *legendary* character!"
-            )
+            
+            # Send character image with details
+            character_image = character.get('image_url', None)
+            if character_image:
+                await bot.send_photo(
+                    chat_id=message.chat.id,
+                    photo=character_image,
+                    caption=(
+                        f"🌟 **Name:** {character['name']}\n"
+                        f"⚜️ **Rarity:** {character['rarity']}\n"
+                        f"⛩️ **Anime:** {character['anime']}\n\n"
+                        f"🎉 Congratulations {mention}, you unlocked a *legendary* character!"
+                    ),
+                    reply_to_message_id=message.message_id
+                )
+            else:
+                # Fallback if no image is available
+                await msg.edit_text(
+                    f"{formatted_result}\n\n"
+                    f"🌟 **Name:** {character['name']}\n"
+                    f"⚜️ **Rarity:** {character['rarity']}\n"
+                    f"⛩️ **Anime:** {character['anime']}\n\n"
+                    f"🎉 Congratulations {mention}, you unlocked a *legendary* character!"
+                )
         else:
             await msg.edit_text(
                 f"🎉 *JACKPOT!* 🎉\n\n{formatted_result}\n\n"
-                f"⚠️ No new characters available to unlock! Check your collection or try again later."
+                f"⚠️ No new characters available! Check your collection or try again later."
             )
+        cooldowns[user_id] -= 30  # Reduce cooldown for jackpot
 
     elif outcome == "rare":
-        # Rare win case
         await msg.edit_text(
             f"✨ *RARE FIND!* ✨\n\n"
             f"{formatted_result}\n\n"
-            f"🍀 Incredible spin, {mention}! You got a rare combo! Keep it up!"
+            f"🍀 Great spin, {mention}! Rare combos are hard to hit!"
         )
+        cooldowns[user_id] -= 15  # Reduce cooldown for rare finds
 
     elif outcome == "medium":
-        # Medium win case
         await msg.edit_text(
             f"🌟 *Nice Spin!* 🌟\n\n"
             f"{formatted_result}\n\n"
-            f"💎 Great effort, {mention}! You're getting closer to the big win!"
+            f"💎 Good effort, {mention}! You're on the right path!"
         )
 
+    elif outcome == "bonus":
+        await msg.edit_text(
+            f"🎁 *BONUS!* 🎁\n\n"
+            f"{formatted_result}\n\n"
+            f"🔑 {mention}, you've won a *bonus spin*! Use it wisely!"
+        )
+        cooldowns[user_id] = 0  # Reset cooldown for bonus spin
+
     else:
-        # Lose case
         await msg.edit_text(
             f"💔 *Better Luck Next Time!* 💔\n\n"
             f"{formatted_result}\n\n"
-            f"🔄 Don't lose hope, {mention}! Spin again to hit the jackpot!"
+            f"🔄 Keep trying, {mention}! The jackpot awaits!"
         )
 
-    # Adding a final encouragement
-    await asyncio.sleep(1)
-    await message.reply_text(
-        f"🎲 Ready for another spin, {mention}? Who knows, *fortune* might be on your side next!"
+    # Update streak count
+    streaks[user_id] = streaks.get(user_id, 0) + 1
+    if streaks[user_id] % 5 == 0:
+        await message.reply_text(
+            f"🔥 *Amazing!* 🔥\n\n"
+            f"{mention}, you've completed a streak of *{streaks[user_id]}* spins!"
             )
