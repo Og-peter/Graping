@@ -8,49 +8,58 @@ from shivu import user_collection
 # Configuration
 MUST_JOIN = "dynamic_gangs"  # Replace with your channel/group username
 AUTHORIZED_USER_ID = 7011990425  # Replace with your Telegram user ID
-cooldown_duration = 60  # Cooldown in seconds
+COOLDOWN_DURATION = 60  # Cooldown in seconds
+DEFAULT_ENERGY = 100  # Default energy for users
+ENERGY_RECHARGE_RATE = 10  # Energy recharged per hour
+LEVEL_UP_THRESHOLD = 100  # Points required for each level up
 
 # Define the mining materials
 mines = {
     "Coal": {
         "price": 1,
         "emoji": "🪨",
-        "image_url": "https://files.catbox.moe/sw0nnb.jpg",  # Replace with actual URL
-        "aliases": ["coal", "c"],
+        "image_url": "https://files.catbox.moe/sw0nnb.jpg",
         "win_chance": 70,
+        "exp": 5,
     },
     "Iron": {
         "price": 5,
         "emoji": "🔩",
-        "image_url": "https://files.catbox.moe/denh2j.jpg",  # Replace with actual URL
-        "aliases": ["iron", "i"],
+        "image_url": "https://files.catbox.moe/denh2j.jpg",
         "win_chance": 50,
+        "exp": 10,
     },
     "Silver": {
         "price": 10,
         "emoji": "🥈",
-        "image_url": "https://files.catbox.moe/pz7vmd.jpg",  # Replace with actual URL
-        "aliases": ["silver", "s"],
+        "image_url": "https://files.catbox.moe/pz7vmd.jpg",
         "win_chance": 30,
+        "exp": 20,
     },
     "Gold": {
         "price": 20,
         "emoji": "🥇",
-        "image_url": "https://files.catbox.moe/7kgy2k.jpg",  # Replace with actual URL
-        "aliases": ["gold", "g"],
+        "image_url": "https://files.catbox.moe/7kgy2k.jpg",
         "win_chance": 15,
+        "exp": 50,
     },
     "Diamond": {
         "price": 50,
         "emoji": "💎",
-        "image_url": "https://files.catbox.moe/9makd3.jpg",  # Replace with actual URL
-        "aliases": ["diamond", "d"],
+        "image_url": "https://files.catbox.moe/9makd3.jpg",
         "win_chance": 5,
+        "exp": 100,
     },
 }
 
 # Cooldown dictionary
 user_last_mine_time = {}
+
+
+def calculate_level(exp):
+    """Calculate the user's level based on experience points."""
+    level = exp // LEVEL_UP_THRESHOLD
+    return level + 1
 
 
 @bot.on_message(filters.command(["mine"]))
@@ -59,20 +68,29 @@ async def mine_command(_, message: Message):
     current_time = time.time()
 
     # Cooldown check
-    if user_id in user_last_mine_time and current_time - user_last_mine_time[user_id] < cooldown_duration:
-        remaining_time = cooldown_duration - (current_time - user_last_mine_time[user_id])
+    if user_id in user_last_mine_time and current_time - user_last_mine_time[user_id] < COOLDOWN_DURATION:
+        remaining_time = COOLDOWN_DURATION - (current_time - user_last_mine_time[user_id])
         return await message.reply_text(f"⛏️ You're on cooldown! Please wait {int(remaining_time)} seconds before mining again.")
 
-    # Check if the user is in the required group/channel
+    # Ensure the user is in the required group
     try:
         await bot.get_chat_member(MUST_JOIN, user_id)
     except Exception:
         link = f"https://t.me/{MUST_JOIN}"
         return await message.reply_text(
-            f"Please join our support group to mine materials. [Join here]({link}).",
+            f"Please join our group to mine materials. [Join here]({link}).",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Join", url=link)]]),
             disable_web_page_preview=True,
         )
+
+    # Fetch user data
+    user_data = await user_collection.find_one({"id": user_id})
+    if not user_data:
+        user_data = {"id": user_id, "exp": 0, "energy": DEFAULT_ENERGY, "gems": {}, "tokens": 0, "tools": []}
+
+    # Check energy
+    if user_data["energy"] <= 0:
+        return await message.reply_text("⛏️ You're out of energy! Wait for it to recharge or use an energy potion.")
 
     # Mining logic
     mined_material = random.choices(
@@ -83,20 +101,27 @@ async def mine_command(_, message: Message):
     material_data = mines[mined_material]
     quantity = random.randint(1, 5)
     price = material_data["price"] * quantity
+    exp_gained = material_data["exp"] * quantity
 
-    # Update user inventory
-    user_data = await user_collection.find_one({"id": user_id})
-    user_inventory = user_data.get("gems", {}) if user_data else {}
-    user_inventory[mined_material] = user_inventory.get(mined_material, 0) + quantity
-    await user_collection.update_one({"id": user_id}, {"$set": {"gems": user_inventory}}, upsert=True)
+    # Update inventory and stats
+    user_data["energy"] -= 10
+    user_data["exp"] += exp_gained
+    user_level = calculate_level(user_data["exp"])
+    user_data["gems"][mined_material] = user_data["gems"].get(mined_material, 0) + quantity
+    await user_collection.update_one({"id": user_id}, {"$set": user_data}, upsert=True)
 
-    # Send response
+    # Send response with image
     await message.reply_photo(
         photo=material_data["image_url"],
-        caption=f"⛏️ You mined:\n\n"
-                f"{material_data['emoji']} <b>{mined_material}</b>\n"
-                f"Quantity: <b>{quantity}</b>\n"
-                f"Value: <b>{price} tokens</b>",
+        caption=(
+            f"⛏️ You mined:\n\n"
+            f"{material_data['emoji']} <b>{mined_material}</b>\n"
+            f"Quantity: <b>{quantity}</b>\n"
+            f"Value: <b>{price} tokens</b>\n"
+            f"EXP Gained: <b>{exp_gained}</b>\n"
+            f"Your Level: <b>{user_level}</b>\n"
+            f"Remaining Energy: <b>{user_data['energy']}</b>"
+        ),
     )
     user_last_mine_time[user_id] = current_time
 
@@ -107,15 +132,18 @@ async def inventory_command(_, message: Message):
 
     # Fetch inventory
     user_data = await user_collection.find_one({"id": user_id})
-    inventory = user_data.get("gems", {}) if user_data else {}
-
-    if not inventory:
+    if not user_data or not user_data.get("gems"):
         return await message.reply_text("⛏️ Your inventory is empty! Start mining with /mine.")
 
-    # Create inventory text
+    # Display inventory
     inventory_text = "<b>⛏️ Your Inventory:</b>\n\n"
-    for material, quantity in inventory.items():
+    for material, quantity in user_data["gems"].items():
         inventory_text += f"{mines[material]['emoji']} <b>{material}</b>: {quantity}\n"
+    inventory_text += (
+        f"\n<b>Total Tokens:</b> {user_data.get('tokens', 0)}\n"
+        f"<b>Your Level:</b> {calculate_level(user_data['exp'])}\n"
+        f"<b>Energy:</b> {user_data['energy']}"
+    )
 
     await message.reply_text(inventory_text)
 
@@ -133,7 +161,7 @@ async def sell_command(_, message: Message):
 
     # Validate material
     material = next(
-        (key for key, value in mines.items() if material_name.lower() in [key.lower()] + value["aliases"]),
+        (key for key, value in mines.items() if material_name.lower() in [key.lower()]),
         None
     )
     if not material:
@@ -152,16 +180,8 @@ async def sell_command(_, message: Message):
     if inventory[material] == 0:
         del inventory[material]
 
-    await user_collection.update_one({"id": user_id}, {"$set": {"gems": inventory}, "$inc": {"tokens": total_price}})
-    await message.reply_text(f"⛏️ Sold {quantity_to_sell} {mines[material]['emoji']} {material} for {total_price} tokens!")
-
-
-@bot.on_message(filters.user(AUTHORIZED_USER_ID) & filters.command(["reset_inventory"]))
-async def reset_inventory_command(_, message: Message):
-    user_id = message.reply_to_message.from_user.id if message.reply_to_message else None
-
-    if user_id:
-        await user_collection.update_one({"id": user_id}, {"$unset": {"gems": ""}})
-        await message.reply_text(f"⛏️ Inventory reset for user {user_id}.")
-    else:
-        await message.reply_text("Please reply to the user's message to reset their inventory.")
+    user_data["tokens"] += total_price
+    await user_collection.update_one({"id": user_id}, {"$set": {"gems": inventory, "tokens": user_data["tokens"]}})
+    await message.reply_text(
+        f"⛏️ Sold {quantity_to_sell} {mines[material]['emoji']} {material} for {total_price} tokens!"
+    )
