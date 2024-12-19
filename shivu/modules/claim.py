@@ -92,7 +92,7 @@ async def claim_handler(_, message: t.Message):
         )
 
     # Claiming Animation
-    animation = ["❄️", "🌸", "🌧️", "🐋", "🌟", "🎉"]
+    animation = ["❄️", "🌸", "🌧️", "🐳", "🌟", "🎉"]
     temp_msg = await message.reply_text(animation[0])
     for icon in animation[1:]:
         await asyncio.sleep(0.8)
