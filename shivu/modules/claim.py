@@ -20,14 +20,9 @@ join_keyboard = InlineKeyboardMarkup([
 last_claim_time = {}
 
 # Helper Functions
-async def claim_toggle(state):
-    """Toggle the claim system between enabled and disabled."""
-    await collection.update_one({}, {"$set": {"claim": state}}, upsert=True)
-
 async def get_claim_state():
     """Get the current claim system state."""
-    doc = await collection.find_one({})
-    return doc.get("claim", "False")
+    return "True"  # Claiming always enabled
 
 async def add_claim_user(user_id):
     """Mark the user as having claimed a reward."""
@@ -47,23 +42,6 @@ async def get_unique_characters(rarities):
         return []
 
 # Command Handlers
-@bot.on_message(filters.command("startclaim") & filters.user(SPECIALGRADE))
-async def start_claim(_, message: t.Message):
-    await claim_toggle("True")
-    await message.reply_text(
-        "✨ **Claiming Feature Activated!**\n\n"
-        "🌟 **Users can now start claiming their favorite characters.**\n"
-        "🔔 **Don't forget to check the group for more events!**"
-    )
-
-@bot.on_message(filters.command("stopclaim") & filters.user(SPECIALGRADE))
-async def stop_claim(_, message: t.Message):
-    await claim_toggle("False")
-    await message.reply_text(
-        "🚫 **Claiming Feature Disabled!**\n\n"
-        "❌ **Users cannot claim rewards for now. Stay tuned for updates!**"
-    )
-
 @bot.on_message(filters.command("claim"))
 async def claim_handler(_, message: t.Message):
     user_id = message.from_user.id
@@ -100,7 +78,7 @@ async def claim_handler(_, message: t.Message):
             ])
         )
 
-    # Check claim state
+    # Claiming always enabled
     claim_state = await get_claim_state()
     if claim_state == "False":
         return await message.reply_text("❌ **Claiming is currently disabled.**\n🕒 **Stay tuned for updates.**")
@@ -162,4 +140,4 @@ async def reset_claim(_, message: t.Message):
     await user_collection.update_many({}, {"$unset": {"claim": ""}})
     await message.reply_text(
         "🔄 **All cooldowns have been reset!**\n🎯 **Users can now claim again without waiting.**"
-        )
+    )
