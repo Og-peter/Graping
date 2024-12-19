@@ -7,8 +7,8 @@ from datetime import datetime, timedelta
 from pyrogram.errors.exceptions.bad_request_400 import UserNotParticipant
 
 # Constants
-SUPPORT_CHAT_ID = -1001932566732  # Replace with your group chat ID
-SUPPORT_URL = "https://t.me/Grab_Your_WH_Group"
+SUPPORT_CHAT_ID = -1002466950912  # Replace with your group chat ID
+SUPPORT_URL = "https://t.me/Dyna_community"
 
 # Advanced Keyboard
 join_keyboard = InlineKeyboardMarkup([
@@ -32,7 +32,7 @@ async def add_claim_user(user_id):
     """Mark the user as claimed."""
     await user_collection.update_one({"id": user_id}, {"$set": {"claim": True}}, upsert=True)
 
-async def get_unique_characters(receiver_id, rarities=['⚪️ Common', '🟣 Rare', '🟡 Legendary', '🟢 Medium']):
+async def get_unique_characters(receiver_id, rarities=['🔵 Low', '🟢 Medium', '🔴 High', '🟡 Nobel', '🔮 Limited', '🥵 Nudes']):
     """Get a unique character for the claiming process."""
     try:
         pipeline = [
@@ -140,7 +140,7 @@ async def claim_handler(_, message: t.Message):
     img_url = character.get('img_url', '')
     char_name = character.get('name', 'Unknown')
     char_anime = character.get('anime', 'Unknown')
-    char_rarity = character.get('rarity', '⚪️ Common')
+    char_rarity = character.get('rarity', '🔵 Low')
 
     last_claim_time[user_id] = now
     await add_claim_user(user_id)
