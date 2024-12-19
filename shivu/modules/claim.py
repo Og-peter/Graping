@@ -1,170 +1,176 @@
+import asyncio
 from pyrogram import filters, Client, types as t
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from shivu import shivuu as bot
+from shivu import shivuu as bot, DEV_LIST
 from shivu import user_collection, collection
 from datetime import datetime, timedelta
 from pyrogram.errors.exceptions.bad_request_400 import UserNotParticipant
-from pyrogram.enums import ChatMemberStatus
 
-DEVS = (6995317382,)  # Developer user IDs
-SUPPORT_CHAT_ID = -1002466950912  # ID grup support
-CHANNEL_ID = -1002122552289  # ID channel resmi
-COMMUNITY_GROUP_ID = -1002466950912  # ID grup community
+# Constants
+SUPPORT_CHAT_ID = -1001932566732  # Replace with your group chat ID
+SUPPORT_URL = "https://t.me/Grab_Your_WH_Group"
 
-# Tombol untuk grup support, channel resmi, dan grup community
-keyboard_support = t.InlineKeyboardMarkup([
-    [t.InlineKeyboardButton("Official Grap group", url="https://t.me/Dyna_community")]
-])
-keyboard_channel = t.InlineKeyboardMarkup([
-    [t.InlineKeyboardButton("Official Grap W/H", url="https://t.me/Seizer_updates")]
-])
-keyboard_community = t.InlineKeyboardMarkup([
-    [t.InlineKeyboardButton("Community Groups", url="https://t.me/Dyna_community")]
-])
-keyboard_both = t.InlineKeyboardMarkup([
-    [t.InlineKeyboardButton("Official Grap W/H Groups", url="https://t.me/Dyna_community")],
-    [t.InlineKeyboardButton("Official Grap W/H", url="https://t.me/Seizer_updates")]
-])
-keyboard_all = t.InlineKeyboardMarkup([
-    [t.InlineKeyboardButton("Official Grap W/H Groups", url="https://t.me/Dyna_community")],
-    [t.InlineKeyboardButton("Official Grap W/H", url="https://t.me/Seizer_updates")],
-    [t.InlineKeyboardButton("Community Groups", url="https://t.me/Dyna_community")]
+# Advanced Keyboard
+join_keyboard = InlineKeyboardMarkup([
+    [InlineKeyboardButton("🌌 Join Support Group 🌌", url=SUPPORT_URL)]
 ])
 
-# Fungsi untuk memeriksa keanggotaan pengguna
-async def check_membership(user_id):
-    is_member_group = False
-    is_member_channel = False
-    is_member_community = False
+# Cooldown Dictionary
+last_claim_time = {}
 
-    valid_statuses = [
-        ChatMemberStatus.MEMBER,
-        ChatMemberStatus.ADMINISTRATOR,
-        ChatMemberStatus.OWNER
-    ]
+# Helper Functions
+async def claim_toggle(state):
+    """Toggle the claim state between enabled/disabled."""
+    await collection.update_one({}, {"$set": {"claim": state}}, upsert=True)
 
-    # Periksa keanggotaan di grup support
+async def get_claim_state():
+    """Fetch the claim system's current state."""
+    doc = await collection.find_one({})
+    return doc.get("claim", "False")
+
+async def add_claim_user(user_id):
+    """Mark the user as claimed."""
+    await user_collection.update_one({"id": user_id}, {"$set": {"claim": True}}, upsert=True)
+
+async def get_unique_characters(receiver_id, rarities=['⚪️ Common', '🟣 Rare', '🟡 Legendary', '🟢 Medium']):
+    """Get a unique character for the claiming process."""
     try:
-        member_group = await bot.get_chat_member(SUPPORT_CHAT_ID, user_id)
-        is_member_group = member_group.status in valid_statuses
-        print(f"User {user_id} - Group membership status: {member_group.status}")
-    except UserNotParticipant:
-        print(f"User {user_id} is not a participant in the group.")
-    except Exception as e:
-        print(f"Error checking group membership for user {user_id}: {e}")
-
-    # Periksa keanggotaan di channel
-    try:
-        member_channel = await bot.get_chat_member(CHANNEL_ID, user_id)
-        is_member_channel = member_channel.status in valid_statuses
-        print(f"User {user_id} - Channel membership status: {member_channel.status}")
-    except UserNotParticipant:
-        print(f"User {user_id} is not a participant in the channel.")
-    except Exception as e:
-        print(f"Error checking channel membership for user {user_id}: {e}")
-
-    # Periksa keanggotaan di grup community
-    try:
-        member_community = await bot.get_chat_member(COMMUNITY_GROUP_ID, user_id)
-        is_member_community = member_community.status in valid_statuses
-        print(f"User {user_id} - Community membership status: {member_community.status}")
-    except UserNotParticipant:
-        print(f"User {user_id} is not a participant in the community group.")
-    except Exception as e:
-        print(f"Error checking community membership for user {user_id}: {e}")
-
-    print(f"User {user_id} - Group member: {is_member_group}, Channel member: {is_member_channel}, Community member: {is_member_community}")
-    return is_member_group, is_member_channel, is_member_community
-
-# Fungsi untuk mendapatkan karakter unik
-async def get_unique_character(receiver_id, target_rarities=['🔵 Low', '🟢 Medium', '🔴 High', '🟡 Nobel', '🔮 Limited', '🥵 Nudes']):
-    """
-    Fetches a unique character for the user. If no unique character is found, fetches any random character.
-    """
-    try:
-        # Fetch user's owned characters
-        user_data = await user_collection.find_one({'id': receiver_id}, {'characters': 1})
-        owned_character_ids = [char['id'] for char in user_data.get('characters', [])] if user_data else []
-
-        # Attempt to fetch a unique character
         pipeline = [
-            {'$match': {'rarity': {'$in': target_rarities}, 'id': {'$nin': owned_character_ids}}},
-            {'$sample': {'size': 1}}
+            {'$match': {'rarity': {'$in': rarities}}},
+            {'$sample': {'size': 1}}  # Get a random character
         ]
         cursor = collection.aggregate(pipeline)
-        characters = await cursor.to_list(length=1)
-
-        # If no unique character found, fetch any random character
-        if not characters:
-            random_character_pipeline = [{'$sample': {'size': 1}}]
-            random_cursor = collection.aggregate(random_character_pipeline)
-            characters = await random_cursor.to_list(length=1)
-
-        return characters[0] if characters else None
+        return await cursor.to_list(length=1)
     except Exception as e:
-        print(f"Error fetching character: {e}")
-        return None
+        print(f"Error in fetching character: {e}")
+        return []
 
+# Command Handlers
+@bot.on_message(filters.command("startclaim") & filters.user(DEV_LIST))
+async def start_claim(_, message: t.Message):
+    await claim_toggle("True")
+    await message.reply_text(
+        "✨ **Claiming Feature Activated!**\n\n"
+        "🌟 **Users can now start claiming their favorite characters.**\n"
+        "🔔 **Don't forget to check the group for more events!**"
+    )
 
-@bot.on_message(filters.command(["claim"]))
-async def claim_command(_, message: t.Message):
+@bot.on_message(filters.command("stopclaim") & filters.user(DEV_LIST))
+async def stop_claim(_, message: t.Message):
+    await claim_toggle("False")
+    await message.reply_text(
+        "🚫 **Claiming Feature Disabled!**\n\n"
+        "❌ **Users cannot claim rewards for now. Stay tuned for updates!**"
+    )
+
+@bot.on_message(filters.command("claim"))
+async def claim_handler(_, message: t.Message):
     user_id = message.from_user.id
+    chat_id = message.chat.id
     mention = message.from_user.mention
 
-    # Check user's group/channel membership
-    is_member_group, is_member_channel, is_member_community = await check_membership(user_id)
-    if not is_member_group and not is_member_channel and not is_member_community:
+    # Group Restriction
+    if chat_id != SUPPORT_CHAT_ID:
         return await message.reply_text(
-            "You must join the official groups, channels, and community group to use this command.",
-            reply_markup=keyboard_all
+            f"🔒 **This command can only be used in the** [Support Group]({SUPPORT_URL}).",
+            disable_web_page_preview=True
         )
-    elif not is_member_group:
+
+    # Join Group Check
+    try:
+        await bot.get_chat_member(SUPPORT_CHAT_ID, user_id)
+    except UserNotParticipant:
         return await message.reply_text(
-            "You must join the official group to use this command.",
-            reply_markup=keyboard_support
+            "⚠️ **Join the group to claim your reward!**",
+            reply_markup=join_keyboard
         )
-    elif not is_member_channel:
+
+    # Channel Subscription Check
+    channel_username = "dynamic_supports"  # Replace with your channel's username
+    try:
+        await bot.get_chat_member(channel_username, user_id)
+    except UserNotParticipant:
         return await message.reply_text(
-            "You must join the official channel to use this command.",
-            reply_markup=keyboard_channel
+            "📢 **Subscribe to the channel to claim rewards!**\n\n"
+            f"🔗 **Join here:** [Support Channel](https://t.me/{channel_username})",
+            disable_web_page_preview=True,
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔔 Join Support Channel 🔔", url=f"https://t.me/{channel_username}")]
+            ])
         )
-    elif not is_member_community:
+
+    # Claim System Check
+    claim_state = await get_claim_state()
+    if claim_state == "False":
         return await message.reply_text(
-            "You must join the community group to use this command.",
-            reply_markup=keyboard_community
+            "❌ **Claiming is currently disabled.**\n"
+            "🕒 **Stay tuned for updates.**"
         )
 
-    # Ensure user exists in the database
-    user_data = await user_collection.find_one({'id': user_id})
-    if not user_data:
-        await user_collection.insert_one({'id': user_id, 'characters': [], 'last_claim_time': None})
+    # Cooldown Check
+    now = datetime.now()
+    if user_id in last_claim_time:
+        last_claim_date = last_claim_time[user_id]
+        if last_claim_date.date() == now.date():
+            next_claim = (last_claim_date + timedelta(days=1)).strftime("%H:%M:%S")
+            return await message.reply_text(
+                f"🕒 **You've already claimed today!**\n"
+                f"⏳ **Next Claim Available:** `{next_claim}`"
+            )
 
-    # Check if the user has already claimed today
-    now = datetime.utcnow()
-    last_claim_time = user_data.get('last_claim_time')
-    if last_claim_time and last_claim_time.date() == now.date():
-        return await message.reply_text("You have already claimed your character today. Come back tomorrow!")
+    # Claim Animation
+    claiming_messages = [
+        "🌌 **Exploring the universe of characters...**",
+        "💫 **Scanning for the rarest treasures...**",
+        "🌟 **Preparing a legendary reward...**",
+        "✨ **Your destiny is about to unfold!**"
+    ]
+    temp_msg = await message.reply_text(claiming_messages[0])
+    for msg in claiming_messages[1:]:
+        await asyncio.sleep(1.5)
+        await temp_msg.edit(msg)
 
-    # Update last claim time
-    await user_collection.update_one({'id': user_id}, {'$set': {'last_claim_time': now}})
+    # Fetch Character
+    characters = await get_unique_characters(user_id)
+    if not characters:
+        return await temp_msg.edit("⚠️ **No characters available. Try again later!**")
 
-    # Fetch a character
-    character = await get_unique_character(user_id)
+    # Save and Send Character
+    character = characters[0]
+    img_url = character.get('img_url', '')
+    char_name = character.get('name', 'Unknown')
+    char_anime = character.get('anime', 'Unknown')
+    char_rarity = character.get('rarity', '⚪️ Common')
 
-    # Ensure the character is added to the user's collection
-    if character:
-        await user_collection.update_one({'id': user_id}, {'$push': {'characters': character}})
-        img_url = character['img_url']
-        caption = (
-            f"╭── ˹ ᴛᴏᴅᴀʏ'ꜱ ʀᴇᴡᴀʀᴅ ˼ ──•\n"
-            f"┆\n"
-            f"┊◍ 𝖮𝗐𝖮 {mention} won this character today! 💘\n"
-            f"┆◍ ❄️ Name: {character['name']}\n"
-            f"┊● ⚜️ Rarity: {character['rarity']}\n"
-            f"┆● ⛩️ Anime: {character['anime']}\n"
-            f"├──˹ ᴄᴏᴍᴇ ʙᴀᴄᴋ ᴛᴏᴍᴏʀʀᴏᴡ ˼──•\n"
-            f"╰───────────────•\n"
-        )
-        return await message.reply_photo(photo=img_url, caption=caption)
-    else:
-        return await message.reply_text("An unexpected error occurred. Please try again later.")
+    last_claim_time[user_id] = now
+    await add_claim_user(user_id)
+    await user_collection.update_one(
+        {"id": user_id},
+        {"$push": {"characters": character}}
+    )
+
+    # Reward Message
+    reward_message = f"""
+🎉 **Congrats, {mention}!**
+
+✨ **Character Claimed:**
+- **🍁 Name:** `{char_name}`
+- **⛩️ Anime:** `{char_anime}`
+- **🪷 Rarity:** `{char_rarity}`
+
+🔔 **Claim another reward tomorrow!**
+"""
+    await temp_msg.delete()
+    await message.reply_photo(photo=img_url, caption=reward_message)
+
+# Reset Cooldown Command
+@bot.on_message(filters.command("resetclaim") & filters.user(DEV_LIST))
+async def reset_claim(_, message: t.Message):
+    """Reset claim cooldown for all users."""
+    global last_claim_time
+    last_claim_time.clear()
+    await user_collection.update_many({}, {"$unset": {"claim": ""}})
+    await message.reply_text(
+        "🔄 **All cooldowns have been reset!**\n"
+        "🎯 **Users can now claim again without waiting.**"
+    )
