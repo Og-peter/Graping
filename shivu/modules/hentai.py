@@ -107,8 +107,8 @@ async def find_character(_, message: t.Message):
     # Display character with options
     keyboard = InlineKeyboardMarkup(
         [
-            [InlineKeyboardButton("⚔️ Fight", callback_data=f"fight_{user_id}")],
-            [InlineKeyboardButton("❌ Ignore", callback_data=f"ignore_{user_id}")]
+            [InlineKeyboardButton("🌚 Semx ", callback_data=f"fight_{user_id}")],
+            [InlineKeyboardButton("❌ Ignore (black) 🌝", callback_data=f"ignore_{user_id}")]
         ]
     )
     await message.reply_photo(
@@ -119,7 +119,7 @@ async def find_character(_, message: t.Message):
             f"🏮 **Rarity**: {character['rarity']}\n"
             f"⛩️ **Anime**: {character['anime']}\n"
             f"👀 **Age**: <b><font color='pink'>{random.randint(18, 40)}</font></b> (Just the right age 😉)\n\n"
-            f"⚔️ Ready to fight on the bed? Choose to **fight** or **ignore**!\n\n"
+            f"⚔️ Ready to semx fight on the bed? Choose to **semx** or **ignore**!\n\n"
             f"Use the buttons below to make your move! 🗿"
         ),
         reply_markup=keyboard,
@@ -188,8 +188,8 @@ async def hfind_character(_, message: t.Message):
     # Display character with options
     keyboard = InlineKeyboardMarkup(
         [
-            [InlineKeyboardButton("⚔️ Fight", callback_data=f"fight_{user_id}")],
-            [InlineKeyboardButton("❌ Ignore", callback_data=f"ignore_{user_id}")]
+            [InlineKeyboardButton("🌚 Semx", callback_data=f"fight_{user_id}")],
+            [InlineKeyboardButton("❌ Ignore (black 🌝)", callback_data=f"ignore_{user_id}")]
         ]
     )
     await message.reply_photo(
@@ -200,7 +200,7 @@ async def hfind_character(_, message: t.Message):
             f"🏮 **Rarity**: {character['rarity']}\n"
             f"⛩️ **Anime**: {character['anime']}\n"
             f"👀 **Age**: <b><font color='pink'>{random.randint(18, 40)}</font></b> (Just the right age 😉)\n\n"
-            f"⚔️ Ready to fight on the bed? Choose to **fight** or **ignore**!\n\n"
+            f"⚔️ Ready to semx fight on the bed? Choose to **semx** or **ignore**!\n\n"
             f"Use the buttons below to make your move! 🗿"
         ),
         reply_markup=keyboard,
@@ -237,7 +237,7 @@ async def handle_fight(callback_query, user_id, character):
     user_wins = random.choice([True, False])
 
     if user_wins:
-        result_text = f"🎉 {mention}, you won the bed fight against {character['name']}!\nThe character is now yours!"
+        result_text = f"🎉 {mention}, you won the bed semx fight against {character['name']}!\nThe character is now yours!"
         await user_collection.update_one({'id': user_id}, {'$push': {'characters': character}})
     else:
         result_text = (
