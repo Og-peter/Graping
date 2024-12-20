@@ -160,3 +160,18 @@ async def remove_limit_callback(_, callback_query: t.CallbackQuery):
 async def decline_limit_callback(_, callback_query: t.CallbackQuery):
     """Handle the decline button for limit removal."""
     await callback_query.edit_message_text("❌ Limit removal canceled. Come back when you're ready!")
+
+@bot.on_callback_query(filters.regex(r"(fight|ignore)_(\d+)"))
+async def fight_or_ignore_callback(_, callback_query: t.CallbackQuery):
+    """Handle fight or ignore interactions."""
+    action, user_id = callback_query.data.split("_")
+    user_id = int(user_id)
+
+    # Ensure the correct user interacts
+    if callback_query.from_user.id != user_id:
+        return await callback_query.answer("This is not your interaction!", show_alert=True)
+
+    if action == "fight":
+        await callback_query.edit_message_text("⚔️ Fight initiated! Show your power!")
+    elif action == "ignore":
+        await callback_query.edit_message_text("❌ Ignored! Better luck next time.")
