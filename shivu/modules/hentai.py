@@ -2,6 +2,8 @@ import asyncio
 import random
 import time
 from pyrogram import filters, Client, types as t
+from itertools import groupby
+from html import escape
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from shivu import shivuu as bot
 from shivu import collection, user_collection
@@ -247,3 +249,123 @@ async def handle_fight(callback_query, user_id, character):
 
     # Clear session
     user_sessions.pop(user_id, None)
+    
+@bot.on_message(filters.command(["collection"]))
+async def paginated_collection(_, message: t.Message):
+    """Display the user's collection with pagination."""
+    user_id = message.from_user.id
+    mention = message.from_user.mention
+
+    # Fetch user data
+    user_data = await user_collection.find_one({'id': user_id})
+    if not user_data or 'characters' not in user_data or len(user_data['characters']) == 0:
+        return await message.reply_text(
+            f"❌ {mention}, your collection is empty.\nStart collecting characters using `/find` or `/hfind`!",
+            quote=True
+        )
+
+    # Pagination setup
+    page = 0  # Default to page 1
+    characters = sorted(user_data['characters'], key=lambda x: x['anime'])  # Group by anime
+    total_pages = (len(characters) + 9) // 10  # 10 characters per page
+
+    # Character count by ID for duplicate characters
+    character_counts = {}
+    for char in characters:
+        character_counts[char['id']] = character_counts.get(char['id'], 0) + 1
+
+    # Generate harem message
+    harem_message = f"<b>{escape(message.from_user.first_name)}'s ʜᴀʀᴇᴍ - ᴘᴀɢᴇ {page + 1}/{total_pages}</b>\n"
+
+    # Group characters by anime
+    current_characters = characters[page * 10:(page + 1) * 10]
+    current_grouped_characters = {k: list(v) for k, v in groupby(current_characters, key=lambda x: x['anime'])}
+    included_characters = set()
+
+    for anime, characters in current_grouped_characters.items():
+        user_anime_count = len([char for char in user_data['characters'] if isinstance(char, dict) and char.get('anime') == anime])
+        total_anime_count = await collection.count_documents({"anime": anime})
+
+        harem_message += f'\n⌬ <b>{anime} 〔{user_anime_count}/{total_anime_count}〕</b>\n'
+        harem_message += f'⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋\n'
+
+        for character in characters:
+            if character['id'] not in included_characters:
+                count = character_counts[character['id']]
+                formatted_id = f"{int(character['id']):04d}"
+                harem_message += f'➥ {formatted_id} | {character["rarity"][0]} | {character["name"]} ×{count}\n'
+                included_characters.add(character['id'])
+        harem_message += f'⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋\n'
+
+    # Inline buttons for navigation and viewing individual characters
+    keyboard = [
+        [
+            InlineKeyboardButton("⏪ Previous", callback_data=f"collection_page_{user_id}_{page - 1}"),
+            InlineKeyboardButton("Next ⏩", callback_data=f"collection_page_{user_id}_{page + 1}")
+        ],
+        [InlineKeyboardButton("sᴇᴇ ʜᴀʀᴇᴍ", switch_inline_query_current_chat=f"collection.{user_id}")]
+    ]
+
+    # Send the paginated collection
+    await message.reply_text(
+        harem_message,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        disable_web_page_preview=True
+    )
+
+@bot.on_callback_query(filters.regex(r"collection_page_(\d+)_(\d+)"))
+async def paginate_collection(_, callback_query: t.CallbackQuery):
+    """Handle pagination for the user's collection."""
+    user_id, page = map(int, callback_query.data.split("_")[1:])
+    user_data = await user_collection.find_one({'id': user_id})
+    if not user_data or 'characters' not in user_data or len(user_data['characters']) == 0:
+        return await callback_query.answer("No characters in the collection.", show_alert=True)
+
+    # Ensure valid page
+    characters = sorted(user_data['characters'], key=lambda x: x['anime'])
+    total_pages = (len(characters) + 9) // 10
+    if page < 0 or page >= total_pages:
+        return await callback_query.answer("Invalid page.", show_alert=True)
+
+    # Character count by ID for duplicates
+    character_counts = {}
+    for char in characters:
+        character_counts[char['id']] = character_counts.get(char['id'], 0) + 1
+
+    # Generate harem message for the current page
+    harem_message = f"<b>{escape(callback_query.from_user.first_name)}'s ʜᴀʀᴇᴍ - ᴘᴀɢᴇ {page + 1}/{total_pages}</b>\n"
+
+    current_characters = characters[page * 10:(page + 1) * 10]
+    current_grouped_characters = {k: list(v) for k, v in groupby(current_characters, key=lambda x: x['anime'])}
+    included_characters = set()
+
+    for anime, characters in current_grouped_characters.items():
+        user_anime_count = len([char for char in user_data['characters'] if isinstance(char, dict) and char.get('anime') == anime])
+        total_anime_count = await collection.count_documents({"anime": anime})
+
+        harem_message += f'\n⌬ <b>{anime} 〔{user_anime_count}/{total_anime_count}〕</b>\n'
+        harem_message += f'⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋\n'
+
+        for character in characters:
+            if character['id'] not in included_characters:
+                count = character_counts[character['id']]
+                formatted_id = f"{int(character['id']):04d}"
+                harem_message += f'➥ {formatted_id} | {character["rarity"][0]} | {character["name"]} ×{count}\n'
+                included_characters.add(character['id'])
+        harem_message += f'⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋⚋\n'
+
+    # Inline buttons for navigation
+    keyboard = [
+        [
+            InlineKeyboardButton("⏪ Previous", callback_data=f"collection_page_{user_id}_{page - 1}"),
+            InlineKeyboardButton("Next ⏩", callback_data=f"collection_page_{user_id}_{page + 1}")
+        ],
+        [InlineKeyboardButton("sᴇᴇ ʜᴀʀᴇᴍ", switch_inline_query_current_chat=f"collection.{user_id}")]
+    ]
+
+    # Edit the original message with updated content
+    await callback_query.message.edit_text(
+        harem_message,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        disable_web_page_preview=True
+    )
