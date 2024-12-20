@@ -134,15 +134,38 @@ async def hfind_character(_, message: t.Message):
 
     character_id = message.command[1]
 
-    # Check daily limit
-    if await update_usage(user_id, 'hfind'):
-        # Deduct balance if user wants to break the limit
-        if not await deduct_balance(user_id, EXTRA_BALANCE_COST):
+    # Cooldown check
+    if user_id in cooldowns and time.time() - cooldowns[user_id] < 30:
+        cooldown_time = int(30 - (time.time() - cooldowns[user_id]))
+        return await message.reply_text(f"⏳ Horny? Wait {cooldown_time} seconds to start a new round with a new character 🌚.", quote=True)
+
+    # Update cooldown
+    cooldowns[user_id] = time.time()
+
+    # Check daily usage
+    if user_id not in daily_usage:
+        daily_usage[user_id] = {'hfind': 0}
+
+    if daily_usage[user_id]['hfind'] < 5:
+        # Free usage
+        daily_usage[user_id]['hfind'] += 1
+    else:
+        # After free limit, deduct balance
+        entry_fee = 2000
+        user_data = await user_collection.find_one({'id': user_id})
+        user_balance = user_data.get('balance', 0) if user_data else 0
+
+        if user_balance < entry_fee:
             return await message.reply_text(
-                f"❌ You've reached your daily limit of {DAILY_LIMIT} `/hfind` uses.\n"
-                f"Spend ₩{EXTRA_BALANCE_COST} to extend your limit or try again tomorrow.",
+                f"❌ You have exhausted your 5 free daily `/hfind` uses.\n"
+                f"Your current balance is ₩{user_balance}, but you need ₩{entry_fee} to continue.\n"
+                f"Please recharge your balance or wait for the next day to get 5 free tries!",
                 quote=True
             )
+
+        # Deduct entry fee from balance
+        await user_collection.update_one({'id': user_id}, {'$inc': {'balance': -entry_fee}})
+        daily_usage[user_id]['hfind'] += 1
 
     # Fetch the character by ID
     character = await fetch_character(query=character_id)
@@ -177,7 +200,7 @@ async def hfind_character(_, message: t.Message):
             f"👀 **Age**: <b><font color='pink'>{random.randint(18, 40)}</font></b> (Just the right age 😉)\n\n"
             f"⚔️ Ready to fight on the bed? Choose to **fight** or **ignore**!\n\n"
             f"Use the buttons below to make your move! 🗿"
-    ),
+        ),
         reply_markup=keyboard,
     )
 
