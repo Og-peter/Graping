@@ -4,6 +4,9 @@ import random
 import re
 import asyncio
 import math
+from PIL import Image, ImageFilter
+import requests
+from io import BytesIO
 from html import escape
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CommandHandler, CallbackContext, MessageHandler, filters
@@ -168,20 +171,23 @@ async def send_image(update: Update, context: CallbackContext) -> None:
     }
 
     rarity_emoji, rarity_name = rarity_to_emoji.get(selected_character.get('rarity'), ("❓", "Unknown"))
-   
+
+    # Download the image and apply a blur
+    response = requests.get(selected_character['img_url'])
+    img = Image.open(BytesIO(response.content))
+    blurred_img = img.filter(ImageFilter.GaussianBlur(10))
+    blurred_buffer = BytesIO()
+    blurred_img.save(blurred_buffer, format="JPEG")
+    blurred_buffer.seek(0)
+
     message = await context.bot.send_photo(
         chat_id=chat_id,
-        photo=selected_character['img_url'],
-        caption=f"""***{selected_character['rarity'][0]} ᴡᴀɪғᴜ ʜᴀs ᴊᴜsᴛ sᴘᴀᴡɴᴇᴅ ɪɴ ᴛʜᴇ ᴄʜᴀᴛ!🧃ᴀᴅᴅ ᴛʜɪs ᴄʜᴀʀᴀᴄᴛᴇʀ ᴛᴏ ʏᴏᴜʀ ʜᴀʀᴇᴍ ᴜsɪɴɢ /grap [ɴᴀᴍᴇ]***""",
+        photo=blurred_buffer,
+        caption=f"""***{rarity_emoji} ᴡᴀɪғᴜ ʜᴀs ᴊᴜsᴛ sᴘᴀᴡɴᴇᴅ ɪɴ ᴛʜᴇ ᴄʜᴀᴛ!🧃ᴀᴅᴅ ᴛʜɪs ᴄʜᴀʀᴀᴄᴛᴇʀ ᴛᴏ ʏᴏᴜʀ ʜᴀʀᴇᴍ ᴜsɪɴɢ /grap [ɴᴀᴍᴇ]***""",
         parse_mode='Markdown'
     )
 
-    if update.effective_chat.type == "private":
-        message_link = f"https://t.me/c/{chat_id}/{message.message_id}"
-    else:
-        message_link = f"https://t.me/{update.effective_chat.username}/{message.message_id}"
-
-    character_message_links[chat_id] = message_link
+    character_message_links[chat_id] = message.message_id
     
 async def guess(update: Update, context: CallbackContext) -> None:
     chat_id = update.effective_chat.id
