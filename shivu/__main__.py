@@ -180,6 +180,7 @@ async def send_image(update: Update, context: CallbackContext) -> None:
     blurred_img.save(blurred_buffer, format="JPEG")
     blurred_buffer.seek(0)
 
+    # Send the blurred image
     message = await context.bot.send_photo(
         chat_id=chat_id,
         photo=blurred_buffer,
@@ -187,7 +188,12 @@ async def send_image(update: Update, context: CallbackContext) -> None:
         parse_mode='Markdown'
     )
 
-    character_message_links[chat_id] = message.message_id
+    if update.effective_chat.type == "private":
+        message_link = f"https://t.me/c/{chat_id}/{message.message_id}"
+    else:
+        message_link = f"https://t.me/{update.effective_chat.username}/{message.message_id}"
+
+    character_message_links[chat_id] = message_link
     
 async def guess(update: Update, context: CallbackContext) -> None:
     chat_id = update.effective_chat.id
