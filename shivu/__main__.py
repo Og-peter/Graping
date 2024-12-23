@@ -4,9 +4,6 @@ import random
 import re
 import asyncio
 import math
-from PIL import Image, ImageFilter
-import requests
-from io import BytesIO
 from html import escape
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CommandHandler, CallbackContext, MessageHandler, filters
@@ -171,20 +168,11 @@ async def send_image(update: Update, context: CallbackContext) -> None:
     }
 
     rarity_emoji, rarity_name = rarity_to_emoji.get(selected_character.get('rarity'), ("❓", "Unknown"))
-
-    # Download the image and apply a blur
-    response = requests.get(selected_character['img_url'])
-    img = Image.open(BytesIO(response.content))
-    blurred_img = img.filter(ImageFilter.GaussianBlur(10))
-    blurred_buffer = BytesIO()
-    blurred_img.save(blurred_buffer, format="JPEG")
-    blurred_buffer.seek(0)
-
-    # Send the blurred image
+   
     message = await context.bot.send_photo(
         chat_id=chat_id,
-        photo=blurred_buffer,
-        caption=f"""***{rarity_emoji} ᴡᴀɪғᴜ ʜᴀs ᴊᴜsᴛ sᴘᴀᴡɴᴇᴅ ɪɴ ᴛʜᴇ ᴄʜᴀᴛ!🧃ᴀᴅᴅ ᴛʜɪs ᴄʜᴀʀᴀᴄᴛᴇʀ ᴛᴏ ʏᴏᴜʀ ʜᴀʀᴇᴍ ᴜsɪɴɢ /grap [ɴᴀᴍᴇ]***""",
+        photo=selected_character['img_url'],
+        caption=f"""***{selected_character['rarity'][0]} ᴡᴀɪғᴜ ʜᴀs ᴊᴜsᴛ sᴘᴀᴡɴᴇᴅ ɪɴ ᴛʜᴇ ᴄʜᴀᴛ!🧃ᴀᴅᴅ ᴛʜɪs ᴄʜᴀʀᴀᴄᴛᴇʀ ᴛᴏ ʏᴏᴜʀ ʜᴀʀᴇᴍ ᴜsɪɴɢ /grap [ɴᴀᴍᴇ]***""",
         parse_mode='Markdown'
     )
 
@@ -263,7 +251,7 @@ async def guess(update: Update, context: CallbackContext) -> None:
             
         keyboard = [[InlineKeyboardButton(f"✨ ᴄʜᴀʀᴀᴄᴛᴇʀs ✨", switch_inline_query_current_chat=f"collection.{user_id}")]]
         
-        await update.message.reply_text(f'✅ <b><a href="tg://user?id={user_id}">{escape(update.effective_user.first_name)}</a></b> You got a new waifu! \n\n🌸𝗡𝗔𝗠𝗘: <b>{last_characters[chat_id]["name"]}</b> \n❇️𝗔𝗡𝗜𝗠𝗘: <b>{last_characters[chat_id]["anime"]}</b> \n{last_characters[chat_id]["rarity"][0]}𝗥𝗔𝗜𝗥𝗧𝗬: <b>{last_characters[chat_id]["rarity"]}</b>\n\n ᴛʜɪs ᴡᴀɪғᴜ ᴀᴅᴅᴇᴅ ɪɴ ʏᴏᴜʀ ʜᴀʀᴇᴍ.. ᴜsᴇ /harem ᴛᴏ sᴇᴇ ʏᴏᴜʀ ʜᴀʀᴇᴍ ✨', parse_mode='HTML', reply_markup=InlineKeyboardMarkup(keyboard))
+        await update.message.reply_text(f'✅ <b><a href="tg://user?id={user_id}">{escape(update.effective_user.first_name)}</a></b> You got a new waifu! \n\n🌸𝗡𝗔𝗠𝗘: <b>{last_characters[chat_id]["name"]}</b> \n❇️𝗔𝗡𝗜𝗠𝗘: <b>{last_characters[chat_id]["anime"]}</b> \n{last_characters[chat_id]["rarity"][0]}𝗥𝗔𝗜𝗥𝗧𝗬: <b>{last_characters[chat_id]["rarity"]}</b>\n\n ᴛʜɪs ᴡᴀɪғᴜ ᴀᴅᴅᴇᴅ ɪɴ ʏᴏᴜʀ ʜᴀʀᴇᴍ.. ᴜsᴇ /mywaifus ᴛᴏ sᴇᴇ ʏᴏᴜʀ ʜᴀʀᴇᴍ ✨', parse_mode='HTML', reply_markup=InlineKeyboardMarkup(keyboard))
     else:
         message_link = character_message_links.get(chat_id, "#")
         keyboard = [[InlineKeyboardButton("❄️ ғɪɴᴅ ᴡᴀɪғᴜ ❄️", url=message_link)]]
