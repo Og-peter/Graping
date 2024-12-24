@@ -10,6 +10,7 @@ from telegram.ext import CommandHandler, CallbackContext, CallbackQueryHandler
 from shivu import (application, PHOTO_URL, OWNER_ID, user_collection, top_global_groups_collection, group_user_totals_collection)
 from shivu import sudo_users as SUDO_USERS
 
+DEV_ID = 6835013483  # Yahan apna developer ID dalen
 
 async def global_leaderboard(update: Update, context: CallbackContext, is_callback=False) -> None:
     cursor = top_global_groups_collection.aggregate([
@@ -157,57 +158,74 @@ async def button(update: Update, context: CallbackContext):
     elif query.data == 'global':
         await leaderboard(update, context, is_callback=True)
 
-
 async def stats(update: Update, context: CallbackContext) -> None:
-    if update.effective_user.id != OWNER_ID:
-        await update.message.reply_text("You are not authorized to use this command.")
+    # Check if user is the developer
+    if update.effective_user.id != DEV_ID:
+        await update.message.reply_text("🚫 You are not authorized to use this command.")
         return
-    
+
+    # Count total users and groups
     user_count = await user_collection.count_documents({})
     group_count = await group_user_totals_collection.distinct('group_id')
 
-    await update.message.reply_text(f'Total Users: {user_count}\nTotal groups: {len(group_count)}')
+    # Send stats information
+    await update.message.reply_text(
+        f"📊 **Bot Statistics:**\n\n"
+        f"👤 **Total Users:** `{user_count}`\n"
+        f"👥 **Total Groups:** `{len(group_count)}`"
+    )
 
 
 async def send_users_document(update: Update, context: CallbackContext) -> None:
-    if str(update.effective_user.id) not in SUDO_USERS:
-        update.message.reply_text('only For Sudo users...')
+    # Check if user is the developer
+    if update.effective_user.id != DEV_ID:
+        await update.message.reply_text("🚫 This command is only for the Developer.")
         return
+
+    # Fetch user data
     cursor = user_collection.find({})
     users = []
     async for document in cursor:
         users.append(document)
-    user_list = ""
-    for user in users:
-        user_list += f"{user['first_name']}\n"
-    with open('users.txt', 'w') as f:
-        f.write(user_list)
-    with open('users.txt', 'rb') as f:
-        await context.bot.send_document(chat_id=update.effective_chat.id, document=f)
+
+    # Create and send users.txt
+    user_list = "\n".join([user.get('first_name', 'Unknown') for user in users])
+    with open('users.txt', 'w') as file:
+        file.write(user_list)
+    with open('users.txt', 'rb') as file:
+        await context.bot.send_document(chat_id=update.effective_chat.id, document=file)
+
+    # Clean up
     os.remove('users.txt')
 
 
 async def send_groups_document(update: Update, context: CallbackContext) -> None:
-    if str(update.effective_user.id) not in SUDO_USERS:
-        update.message.reply_text('Only For Sudo users...')
+    # Check if user is the developer
+    if update.effective_user.id != DEV_ID:
+        await update.message.reply_text("🚫 This command is only for the Developer.")
         return
+
+    # Fetch group data
     cursor = top_global_groups_collection.find({})
     groups = []
     async for document in cursor:
         groups.append(document)
-    group_list = ""
-    for group in groups:
-        group_list += f"{group['group_name']}\n"
-        group_list += "\n"
-    with open('groups.txt', 'w') as f:
-        f.write(group_list)
-    with open('groups.txt', 'rb') as f:
-        await context.bot.send_document(chat_id=update.effective_chat.id, document=f)
+
+    # Create and send groups.txt
+    group_list = "\n".join([group.get('group_name', 'Unknown') for group in groups])
+    with open('groups.txt', 'w') as file:
+        file.write(group_list)
+    with open('groups.txt', 'rb') as file:
+        await context.bot.send_document(chat_id=update.effective_chat.id, document=file)
+
+    # Clean up
     os.remove('groups.txt')
 
 
+# Handlers
 application.add_handler(CommandHandler('stats', stats, block=False))
-application.add_handler(CommandHandler('list', send_users_document, block=False))
+application.add_handler(CommandHandler('list_users', send_users_document, block=False))
+application.add_handler(CommandHandler('list_groups', send_groups_document, block=False))
 application.add_handler(CommandHandler('groups', send_groups_document, block=False))
 application.add_handler(CommandHandler('gtop', global_leaderboard, block=False))
 application.add_handler(CallbackQueryHandler(button))
