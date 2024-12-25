@@ -19,16 +19,16 @@ async def get_next_sequence_number(sequence_name):
 
 # Rarity emojis mapping
 rarity_emojis = {
-    '🔵 𝙇𝙊𝙒': '🔵',
-    '🟢 𝙈𝙀𝘿𝙄𝙐𝙈': '🟢',
-    '🟣 𝙃𝙄𝙂𝙃': '🟣',
-    '🟡 𝙉𝙊𝘽𝙀𝙇': '🟡',
-    '🥵 𝙉𝙐𝘿𝙀𝙎': '🥵',
-    '🔮 𝙇𝙄𝙈𝙄𝙏𝙀𝘿': '🔮',
-    '💋 𝘾𝙊𝙎𝙋𝙇𝘼𝙔 [𝙇]': '💋',
-    '⚫️ [𝙓] 𝙑𝙚𝙧𝙨𝙚': '⚫️',
-    '❄️ 𝙀𝙍𝙊𝙏𝙄𝘾': '❄️',
-    '🍑 𝙎𝙪𝙡𝙩𝙧𝙮': '🍑'
+    '🔵 Low': '🔵',
+    '🟢 Medium': '🟢',
+    '🟣 High': '🟣',
+    '🟡 Nobel': '🟡',
+    '🥵 Nudes': '🥵',
+    '🔮 Limited': '🔮',
+    '💋 Cosplay [L]': '💋',
+    '⚫️ [X] Verse': '⚫️',
+    '❄️ Erotic': '❄️',
+    '🍑 Sultry': '🍑'
 }
 
 # Dictionary to store the selected anime for each user
