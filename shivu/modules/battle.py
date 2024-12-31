@@ -7,51 +7,26 @@ from shivu import shivuu as bot
 from shivu import user_collection, collection
 
 # Constants
-WIN_REWARD_CHARACTER_COUNT = 1  # Number of characters a winner gets
-COOLDOWN_DURATION = 300  # Cooldown duration in seconds (5 minutes)
+WIN_REWARD_CHARACTER_COUNT = 1
+COOLDOWN_DURATION = 300  # 5 minutes
 
-# Cooldown tracker
+# Cooldown tracker for battles
 user_cooldowns = {}
 
 # Anime characters' best forms and videos
 CHARACTERS = {
-    "Saitama": {
-        "move": "🔥 **Saitama delivers a 'Serious Punch' and obliterates the battlefield!**",
-        "video_url": "https://files.catbox.moe/rw2yuz.mp4"
-    },
-    "Goku": {
-        "move": "🌌 **Goku unleashes 'Ultra Instinct Kamehameha', shaking the universe!**",
-        "video_url": "https://files.catbox.moe/90bga6.mp4"
-    },
-    "Naruto": {
-        "move": "🌀 **Naruto activates 'Baryon Mode' and overwhelms the opponent!**",
-        "video_url": "https://files.catbox.moe/d2iygy.mp4"
-    },
-    "Luffy": {
-        "move": "🌊 **Luffy goes 'Gear 5', turning the fight into cartoon chaos!**",
-        "video_url": "https://files.catbox.moe/wmc671.gif"
-    },
-    "Ichigo": {
-        "move": "⚡ **Ichigo transforms into 'Final Getsuga Tenshou', slashing everything!**",
-        "video_url": "https://files.catbox.moe/ky17sr.mp4"
-    },
-    "Madara": {
-        "move": "🌪️ **Madara casts 'Perfect Susanoo', decimating the battlefield!**",
-        "video_url": "https://files.catbox.moe/lknesv.mp4"
-    },
-    "Aizen": {
-        "move": "💀 **Aizen enters 'Hogyoku Form' and uses 'Kyoka Suigetsu' to confuse his enemy!**",
-        "video_url": "https://files.catbox.moe/jv25db.mp4"
-    },
+    "Saitama": {"move": "🔥 **Saitama delivers a 'Serious Punch' and obliterates the battlefield!**", "video_url": "https://files.catbox.moe/rw2yuz.mp4"},
+    "Goku": {"move": "🌌 **Goku unleashes 'Ultra Instinct Kamehameha', shaking the universe!**", "video_url": "https://files.catbox.moe/90bga6.mp4"},
+    "Naruto": {"move": "🌀 **Naruto activates 'Baryon Mode' and overwhelms the opponent!**", "video_url": "https://files.catbox.moe/d2iygy.mp4"},
+    "Luffy": {"move": "🌊 **Luffy goes 'Gear 5', turning the fight into cartoon chaos!**", "video_url": "https://files.catbox.moe/wmc671.gif"},
+    "Ichigo": {"move": "⚡ **Ichigo transforms into 'Final Getsuga Tenshou', slashing everything!**", "video_url": "https://files.catbox.moe/ky17sr.mp4"},
+    "Madara": {"move": "🌪️ **Madara casts 'Perfect Susanoo', decimating the battlefield!**", "video_url": "https://files.catbox.moe/lknesv.mp4"},
+    "Aizen": {"move": "💀 **Aizen enters 'Hogyoku Form' and uses 'Kyoka Suigetsu' to confuse his enemy!**", "video_url": "https://files.catbox.moe/jv25db.mp4"},
 }
 
-# Function to get random characters as rewards
 async def get_random_characters():
     try:
-        pipeline = [
-            {'$match': {'rarity': '🟡 Nobel'}},  # Adjust rarity as needed
-            {'$sample': {'size': WIN_REWARD_CHARACTER_COUNT}}
-        ]
+        pipeline = [{"$match": {"rarity": "🟡 Nobel"}}, {"$sample": {"size": WIN_REWARD_CHARACTER_COUNT}}]
         cursor = collection.aggregate(pipeline)
         characters = await cursor.to_list(length=None)
         return characters
@@ -59,7 +34,6 @@ async def get_random_characters():
         print(f"Error fetching characters: {e}")
         return []
 
-# Battle confirmation callback
 @bot.on_callback_query(filters.regex(r"battle_confirm\|(\d+)\|(\d+)"))
 async def battle_confirmation(client: Client, callback_query: t.CallbackQuery):
     challenger_id, opponent_id = map(int, callback_query.data.split("|")[1:])
@@ -68,39 +42,38 @@ async def battle_confirmation(client: Client, callback_query: t.CallbackQuery):
     if user.id != opponent_id:
         return await callback_query.answer("⚠️ Only the opponent can confirm this battle!", show_alert=True)
 
-    await callback_query.answer()
+    # Disable buttons after confirmation
+    await callback_query.message.edit_reply_markup(reply_markup=None)
 
-    # Start battle sequence
+    # Start battle
     challenger = await bot.get_users(challenger_id)
     opponent = await bot.get_users(opponent_id)
-
     challenger_move = random.choice(list(CHARACTERS.items()))
     opponent_move = random.choice(list(CHARACTERS.items()))
 
-    # Send moves with videos
+    # Battle moves
     await bot.send_video(
         chat_id=callback_query.message.chat.id,
-        video=challenger_move[1]['video_url'],
-        caption=f"**{challenger.first_name} uses:** {challenger_move[1]['move']}"
+        video=challenger_move[1]["video_url"],
+        caption=f"**{challenger.first_name} uses:** {challenger_move[1]['move']}",
     )
     await asyncio.sleep(2)
     await bot.send_video(
         chat_id=callback_query.message.chat.id,
-        video=opponent_move[1]['video_url'],
-        caption=f"**{opponent.first_name} counters with:** {opponent_move[1]['move']}"
+        video=opponent_move[1]["video_url"],
+        caption=f"**{opponent.first_name} counters with:** {opponent_move[1]['move']}",
     )
     await asyncio.sleep(2)
 
-    # Decide the winner
+    # Decide winner and loser
     winner = random.choice([challenger, opponent])
     loser = challenger if winner == opponent else opponent
 
-    # Reward the winner
     random_characters = await get_random_characters()
     if random_characters:
         for character in random_characters:
             await user_collection.update_one(
-                {'id': winner.id}, {'$push': {'characters': character}}
+                {"id": winner.id}, {"$push": {"characters": character}}
             )
 
         reward_message = (
@@ -115,22 +88,20 @@ async def battle_confirmation(client: Client, callback_query: t.CallbackQuery):
             )
         await bot.send_photo(
             chat_id=callback_query.message.chat.id,
-            photo=random_characters[0]['img_url'],
-            caption=reward_message
+            photo=random_characters[0]["img_url"],
+            caption=reward_message,
         )
     else:
         await bot.send_message(
             chat_id=callback_query.message.chat.id,
-            text="⚠️ **Something went wrong while fetching the reward. Please try again later.**"
+            text="⚠️ **Something went wrong while fetching the reward. Please try again later.**",
         )
 
-    # Send a message about the loss
     await bot.send_message(
         chat_id=callback_query.message.chat.id,
-        text=f"💀 **{loser.first_name} loses the battle. Better luck next time!**"
+        text=f"💀 **{loser.first_name} loses the battle. Better luck next time!**",
     )
 
-# Battle command handler
 @bot.on_message(filters.command(["battle"]))
 async def battle(_, message: t.Message):
     if not message.reply_to_message:
@@ -139,28 +110,30 @@ async def battle(_, message: t.Message):
     challenger = message.from_user
     opponent = message.reply_to_message.from_user
 
-    # Check if the opponent is the bot itself
     if opponent.is_bot:
-        return await message.reply_text("🤖 **You can't battle against the bot! Challenge another user instead.**")
-
-    # Check if the challenger is replying to their own message
+        return await message.reply_text("🤖 **You can't battle against the bot!**")
     if challenger.id == opponent.id:
-        return await message.reply_text("⚠️ **You can't battle against yourself. Challenge someone else!**")
+        return await message.reply_text("⚠️ **You can't battle against yourself!**")
 
-    # Cooldown check for the challenger
+    # Cooldown check
     current_time = time.time()
     if challenger.id in user_cooldowns and current_time - user_cooldowns[challenger.id] < COOLDOWN_DURATION:
-        return await message.reply_text("⏳ **You need to wait before challenging someone again.**")
+        remaining_time = int(COOLDOWN_DURATION - (current_time - user_cooldowns[challenger.id]))
+        return await message.reply_text(f"⏳ **Wait {remaining_time}s before challenging again!**")
 
-    # Send confirmation button
+    user_cooldowns[challenger.id] = current_time
+
+    # Confirmation buttons
     confirm_markup = InlineKeyboardMarkup(
-        [[
-            InlineKeyboardButton("✅ Confirm", callback_data=f"battle_confirm|{challenger.id}|{opponent.id}"),
-            InlineKeyboardButton("❌ Reject", callback_data="battle_reject")
-        ]]
+        [
+            [
+                InlineKeyboardButton("✅ Accept Challenge", callback_data=f"battle_confirm|{challenger.id}|{opponent.id}"),
+                InlineKeyboardButton("❌ Decline", callback_data="battle_reject"),
+            ]
+        ]
     )
     await message.reply_text(
-        f"⚔️ **{challenger.first_name} has challenged {opponent.first_name} to a battle!**\n\n"
-        f"🔹 {opponent.first_name}, please confirm or reject the challenge below:",
-        reply_markup=confirm_markup
+        f"⚔️ **{challenger.first_name} challenges {opponent.first_name} to a battle!**\n\n"
+        f"🔹 {opponent.first_name}, confirm or reject below:",
+        reply_markup=confirm_markup,
     )
