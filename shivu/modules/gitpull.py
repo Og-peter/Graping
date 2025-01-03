@@ -19,7 +19,7 @@ async def git_pull_command(client, message):
     try:
         # Execute the git pull command with a timeout (to prevent hanging)
         result = subprocess.run(
-            ["git", "pull", "https://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@github.com/Itachiuchiha786786/Graping", "main"],
+            ["git", "pull", "https://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@github.com/Itachiuchiha786786/Graping", "main"],
             capture_output=True, text=True, check=True, timeout=60  # 60 seconds timeout
         )
 
