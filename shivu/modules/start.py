@@ -57,12 +57,12 @@ sɪᴍᴘʟʏ ᴀᴅᴅ ᴍᴇ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜᴘ.
 ┆    ❖ │ ɢʀᴀᴘ ʏᴏᴜʀ ᴡᴀɪғᴜ │ ❖
 ├──────────────────────•
 ┆● ʙᴏᴛ ᴜᴘᴅᴀᴛᴇs - [sᴇɪᴢᴇ ᴜᴘᴅᴀᴛᴇs](https://t.me/Seizer_updates)
-┊● ʙᴏᴛ sᴜᴘᴘᴏʀᴛ - [ᴅʏɴᴀᴍɪᴄ ɢᴀɴɢs](https://t.me/Dyna_community)
+┊● ʙᴏᴛ sᴜᴘᴘᴏʀᴛ - [ᴅʏɴᴀᴍɪᴄ ɢᴀɴɢs](https://t.me/main_dynamic)
 ╰──────────────────────•"""
         
         keyboard = [
             [InlineKeyboardButton("❖ Λᴅᴅ ᴍᴇ ɪɴ ʏᴏᴜʀ ɢʀᴏᴜᴘ ❖", url=f'https://t.me/Grap_Waifu_Bot?startgroup=new')],
-            [InlineKeyboardButton("● sᴜᴘᴘᴏʀᴛ ●", url=f'https://t.me/Dyna_community'),
+            [InlineKeyboardButton("● sᴜᴘᴘᴏʀᴛ ●", url=f'https://t.me/main_dynamic'),
             InlineKeyboardButton("● ᴜᴘᴅᴀᴛᴇ ●", url=f'https://t.me/dynamic_supports')],
             [InlineKeyboardButton("● ғᴀǫ ●", url=f'https://telegra.ph/Seizer-Faq-Menu-09-05')],
         ]
