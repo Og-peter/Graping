@@ -8,8 +8,8 @@ from datetime import datetime, timedelta
 from pyrogram.errors import UserNotParticipant
 
 # Constants
-SUPPORT_CHAT_ID = -1002466950912  # Replace with your group chat ID
-SUPPORT_URL = "https://t.me/Dyna_community"
+SUPPORT_CHAT_ID = -1002319525523  # Replace with your group chat ID
+SUPPORT_URL = "https://t.me/main_dynamic"
 
 # Inline Keyboards
 join_keyboard = InlineKeyboardMarkup([
