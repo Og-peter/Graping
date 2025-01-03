@@ -101,8 +101,13 @@ async def mine_command(_, message: Message):
             disable_web_page_preview=True,
         )
 
-    # Fetch user data
+    # Fetch or initialize user data
     user_data = await ensure_user_data(user_id)
+
+    # Ensure the 'energy' key exists
+    if "energy" not in user_data:
+        user_data["energy"] = DEFAULT_ENERGY
+        await user_collection.update_one({"id": user_id}, {"$set": {"energy": DEFAULT_ENERGY}})
 
     # Check energy
     if user_data["energy"] <= 0:
