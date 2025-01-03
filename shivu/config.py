@@ -4,11 +4,11 @@ class Config(object):
     # Get this value from my.telegram.org/apps
     OWNER_ID = "6835013483"
     sudo_users = "6835013483", "5421067814", "6835013483", "7541483717"
-    GROUP_ID = -1002466950912
+    GROUP_ID = -1002319525523
     TOKEN = "7456960988:AAF2qtGunhDGWzwLRX7Izq4GON_2kS_uxPw"
     mongo_url = "mongodb+srv://nudewaifubot:nudewaifubot@nude.50fk0.mongodb.net/?retryWrites=true&w=majority&appName=nude"
     PHOTO_URL = ["https://ibb.co/q7jzMwz", "https://ibb.co/T2qNx5m", "https://ibb.co/TYS7yC4", "https://ibb.co/hVRR0T1", "https://ibb.co/3W3rVy6"]
-    SUPPORT_CHAT = "Dyna_community"
+    SUPPORT_CHAT = "main_dynamic"
     UPDATE_CHAT = "dynamic_supports"
     BOT_USERNAME = "Grap_Waifu_Bot"
     CHARA_CHANNEL_ID = "-1002417394982"
