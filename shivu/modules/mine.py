@@ -58,8 +58,23 @@ user_last_mine_time = {}
 
 def calculate_level(exp):
     """Calculate the user's level based on experience points."""
-    level = exp // LEVEL_UP_THRESHOLD
-    return level + 1
+    return exp // LEVEL_UP_THRESHOLD + 1
+
+
+async def ensure_user_data(user_id):
+    """Ensure the user has a document in the database."""
+    user_data = await user_collection.find_one({"id": user_id})
+    if not user_data:
+        user_data = {
+            "id": user_id,
+            "exp": 0,
+            "energy": DEFAULT_ENERGY,
+            "gems": {},
+            "tokens": 0,
+            "tools": [],
+        }
+        await user_collection.insert_one(user_data)
+    return user_data
 
 
 @bot.on_message(filters.command(["mine"]))
@@ -68,9 +83,12 @@ async def mine_command(_, message: Message):
     current_time = time.time()
 
     # Cooldown check
-    if user_id in user_last_mine_time and current_time - user_last_mine_time[user_id] < COOLDOWN_DURATION:
-        remaining_time = COOLDOWN_DURATION - (current_time - user_last_mine_time[user_id])
-        return await message.reply_text(f"⛏️ You're on cooldown! Please wait {int(remaining_time)} seconds before mining again.")
+    last_mine_time = user_last_mine_time.get(user_id, 0)
+    if current_time - last_mine_time < COOLDOWN_DURATION:
+        remaining_time = int(COOLDOWN_DURATION - (current_time - last_mine_time))
+        return await message.reply_text(
+            f"⛏️ You're on cooldown! Please wait {remaining_time} seconds before mining again."
+        )
 
     # Ensure the user is in the required group
     try:
@@ -84,9 +102,7 @@ async def mine_command(_, message: Message):
         )
 
     # Fetch user data
-    user_data = await user_collection.find_one({"id": user_id})
-    if not user_data:
-        user_data = {"id": user_id, "exp": 0, "energy": DEFAULT_ENERGY, "gems": {}, "tokens": 0, "tools": []}
+    user_data = await ensure_user_data(user_id)
 
     # Check energy
     if user_data["energy"] <= 0:
@@ -96,7 +112,7 @@ async def mine_command(_, message: Message):
     mined_material = random.choices(
         list(mines.keys()),
         weights=[mines[gem]["win_chance"] for gem in mines],
-        k=1
+        k=1,
     )[0]
     material_data = mines[mined_material]
     quantity = random.randint(1, 5)
@@ -106,7 +122,6 @@ async def mine_command(_, message: Message):
     # Update inventory and stats
     user_data["energy"] -= 10
     user_data["exp"] += exp_gained
-    user_level = calculate_level(user_data["exp"])
     user_data["gems"][mined_material] = user_data["gems"].get(mined_material, 0) + quantity
     await user_collection.update_one({"id": user_id}, {"$set": user_data}, upsert=True)
 
@@ -119,7 +134,7 @@ async def mine_command(_, message: Message):
             f"Quantity: <b>{quantity}</b>\n"
             f"Value: <b>{price} tokens</b>\n"
             f"EXP Gained: <b>{exp_gained}</b>\n"
-            f"Your Level: <b>{user_level}</b>\n"
+            f"Your Level: <b>{calculate_level(user_data['exp'])}</b>\n"
             f"Remaining Energy: <b>{user_data['energy']}</b>"
         ),
     )
@@ -131,8 +146,8 @@ async def inventory_command(_, message: Message):
     user_id = message.from_user.id
 
     # Fetch inventory
-    user_data = await user_collection.find_one({"id": user_id})
-    if not user_data or not user_data.get("gems"):
+    user_data = await ensure_user_data(user_id)
+    if not user_data.get("gems"):
         return await message.reply_text("⛏️ Your inventory is empty! Start mining with /mine.")
 
     # Display inventory
@@ -151,37 +166,37 @@ async def inventory_command(_, message: Message):
 @bot.on_message(filters.command(["sell"]))
 async def sell_command(_, message: Message):
     user_id = message.from_user.id
-    command_parts = message.text.split()
+    command_parts = message.text.split(maxsplit=2)
 
     if len(command_parts) != 3:
         return await message.reply_text("Usage: /sell <material> <quantity>")
 
     material_name = command_parts[1].capitalize()
-    quantity_to_sell = int(command_parts[2])
+    try:
+        quantity_to_sell = int(command_parts[2])
+    except ValueError:
+        return await message.reply_text("Invalid quantity. Please provide a valid number.")
 
     # Validate material
-    material = next(
-        (key for key, value in mines.items() if material_name.lower() in [key.lower()]),
-        None
-    )
+    material = mines.get(material_name)
     if not material:
         return await message.reply_text("Invalid material name. Please check your inventory.")
 
     # Fetch inventory
-    user_data = await user_collection.find_one({"id": user_id})
-    inventory = user_data.get("gems", {}) if user_data else {}
+    user_data = await ensure_user_data(user_id)
+    inventory = user_data.get("gems", {})
 
-    if inventory.get(material, 0) < quantity_to_sell:
+    if inventory.get(material_name, 0) < quantity_to_sell:
         return await message.reply_text("You don't have enough of this material to sell.")
 
     # Calculate price and update inventory
-    total_price = mines[material]["price"] * quantity_to_sell
-    inventory[material] -= quantity_to_sell
-    if inventory[material] == 0:
-        del inventory[material]
+    total_price = material["price"] * quantity_to_sell
+    inventory[material_name] -= quantity_to_sell
+    if inventory[material_name] == 0:
+        del inventory[material_name]
 
     user_data["tokens"] += total_price
     await user_collection.update_one({"id": user_id}, {"$set": {"gems": inventory, "tokens": user_data["tokens"]}})
     await message.reply_text(
-        f"⛏️ Sold {quantity_to_sell} {mines[material]['emoji']} {material} for {total_price} tokens!"
+        f"⛏️ Sold {quantity_to_sell} {material['emoji']} {material_name} for {total_price} tokens!"
     )
