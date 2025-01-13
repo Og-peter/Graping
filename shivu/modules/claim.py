@@ -18,6 +18,7 @@ join_keyboard = InlineKeyboardMarkup([
 
 # Cooldown Dictionary
 last_claim_time = {}
+claim_lock = {}  # Tracks if a user is currently claiming
 
 # Helper Functions
 async def get_claim_state():
@@ -78,49 +79,57 @@ async def claim_handler(_, message: t.Message):
             ])
         )
 
-    # Claiming always enabled
-    claim_state = await get_claim_state()
-    if claim_state == "False":
-        return await message.reply_text("❌ **Claiming is currently disabled.**\n🕒 **Stay tuned for updates.**")
+    # Prevent multiple claims from the same user simultaneously
+    if claim_lock.get(user_id):
+        return await message.reply_text("⚠️ **Your claim is already in progress. Please wait!**")
 
-    # Cooldown Check
-    now = datetime.now()
-    if user_id in last_claim_time and last_claim_time[user_id].date() == now.date():
-        next_claim = (last_claim_time[user_id] + timedelta(days=1)).strftime("%H:%M:%S")
-        return await message.reply_text(
-            f"🕒 **You've already claimed today!**\n⏳ **Next Claim Available:** `{next_claim}`"
+    # Set claim lock
+    claim_lock[user_id] = True
+
+    try:
+        # Claiming always enabled
+        claim_state = await get_claim_state()
+        if claim_state == "False":
+            return await message.reply_text("❌ **Claiming is currently disabled.**\n🕒 **Stay tuned for updates.**")
+
+        # Cooldown Check
+        now = datetime.now()
+        if user_id in last_claim_time and last_claim_time[user_id].date() == now.date():
+            next_claim = (last_claim_time[user_id] + timedelta(days=1)).strftime("%H:%M:%S")
+            return await message.reply_text(
+                f"🕒 **You've already claimed today!**\n⏳ **Next Claim Available:** `{next_claim}`"
+            )
+
+        # Claiming Animation
+        animation = ["❄️", "🌸", "🌧️", "🐳", "🌟", "🎉"]
+        temp_msg = await message.reply_text(animation[0])
+        for icon in animation[1:]:
+            await asyncio.sleep(0.8)
+            await temp_msg.edit(icon)
+
+        # Fetch character
+        rarities = ['🔵 Low', '🟢 Medium', '🔴 High', '🟡 Nobel', '🔮 Limited', '🥵 Nudes']
+        characters = await get_unique_characters(rarities)
+        if not characters:
+            return await temp_msg.edit("⚠️ **No characters available. Try again later!**")
+
+        character = characters[0]
+        img_url = character.get('img_url', '')
+        char_name = character.get('name', 'Unknown')
+        char_anime = character.get('anime', 'Unknown')
+        char_rarity = character.get('rarity', '🔵 Low')
+
+        # Save character and cooldown
+        last_claim_time[user_id] = now
+        await add_claim_user(user_id)
+        await user_collection.update_one(
+            {"id": user_id},
+            {"$push": {"characters": character}},
+            upsert=True
         )
 
-    # Claiming Animation
-    animation = ["❄️", "🌸", "🌧️", "🐳", "🌟", "🎉"]
-    temp_msg = await message.reply_text(animation[0])
-    for icon in animation[1:]:
-        await asyncio.sleep(0.8)
-        await temp_msg.edit(icon)
-
-    # Fetch character
-    rarities = ['🔵 Low', '🟢 Medium', '🔴 High', '🟡 Nobel', '🔮 Limited', '🥵 Nudes']
-    characters = await get_unique_characters(rarities)
-    if not characters:
-        return await temp_msg.edit("⚠️ **No characters available. Try again later!**")
-
-    character = characters[0]
-    img_url = character.get('img_url', '')
-    char_name = character.get('name', 'Unknown')
-    char_anime = character.get('anime', 'Unknown')
-    char_rarity = character.get('rarity', '🔵 Low')
-
-    # Save character and cooldown
-    last_claim_time[user_id] = now
-    await add_claim_user(user_id)
-    await user_collection.update_one(
-        {"id": user_id},
-        {"$push": {"characters": character}},
-        upsert=True
-    )
-
-    # Send Reward
-    reward_message = f"""
+        # Send Reward
+        reward_message = f"""
 🎉 **Congrats, {mention}!**
 
 ✨ **Character Claimed:**
@@ -130,8 +139,12 @@ async def claim_handler(_, message: t.Message):
 
 🔔 **Claim another reward tomorrow!**
 """
-    await temp_msg.delete()
-    await message.reply_photo(photo=img_url, caption=reward_message)
+        await temp_msg.delete()
+        await message.reply_photo(photo=img_url, caption=reward_message)
+
+    finally:
+        # Remove claim lock
+        claim_lock.pop(user_id, None)
 
 @bot.on_message(filters.command("resetclaim") & filters.user(SPECIALGRADE))
 async def reset_claim(_, message: t.Message):
