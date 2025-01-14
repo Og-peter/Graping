@@ -5,99 +5,122 @@ from pyrogram import filters, Client, types as t
 from shivu import shivuu as bot
 from shivu import user_collection, collection
 
-win_rate_percentage = 30  # Adjust the win rate percentage
-cooldown_duration = 60  # Cooldown duration in seconds
+# Configurable Parameters
+win_rate_percentage = 40  # Win rate percentage
+cooldown_duration = 60  # Cooldown duration (in seconds)
+max_spins = 3  # Maximum spins allowed per use
 
-user_cooldowns = {}  # To track user cooldowns
-ban_user_ids = {1234567890}  # List of banned users
+user_cooldowns = {}  # Tracks cooldowns for users
+ban_user_ids = {1234567890}  # List of banned user IDs
 
-async def get_random_characters(rarity):
-    """Fetch random characters based on rarity."""
+
+async def get_random_characters(selected_rarity):
+    """Fetches a random character based on rarity."""
     try:
         pipeline = [
-            {'$match': {'rarity': rarity}},
+            {'$match': {'rarity': selected_rarity}},
             {'$sample': {'size': 1}}
         ]
         cursor = collection.aggregate(pipeline)
         characters = await cursor.to_list(length=None)
         return characters
     except Exception as e:
-        print(f"Error fetching characters: {e}")
+        print(e)
         return []
+
 
 @bot.on_message(filters.command(["spin"]))
 async def spin(_, message: t.Message):
-    user_id = message.from_user.id
+    chat_id = message.chat.id
     mention = message.from_user.mention
+    user_id = message.from_user.id
 
-    # Check if the user is banned
+    # Check if user is banned
     if user_id in ban_user_ids:
-        return await message.reply_text("🚫 You are banned from using this command. Contact support for assistance.")
+        return await message.reply_text(
+            "🚫 You are banned from using this command. Contact support for assistance."
+        )
 
-    # Check cooldown
+    # Check if user is on cooldown
     if user_id in user_cooldowns and time.time() - user_cooldowns[user_id] < cooldown_duration:
         remaining_time = cooldown_duration - int(time.time() - user_cooldowns[user_id])
         return await message.reply_text(
-            f"⏳ Please wait! Your spin will be ready in **{remaining_time} seconds**."
+            f"⏳ Please wait! Your spin is cooling down for **{remaining_time} seconds**."
         )
 
-    # Set cooldown
+    # Set user cooldown
     user_cooldowns[user_id] = time.time()
 
-    # Spinning animation
-    spinning_messages = [
-        "🔄 Spinning the wheel... 🎡",
-        "🎰 Rolling the luck dice...",
-        "✨ Determining your fortune...",
-    ]
-    spin_message = await message.reply_text(random.choice(spinning_messages))
-    await asyncio.sleep(2)
+    # Start the spinning process
+    await message.reply_text("🎡 **Spinning the wheel...** 🔄")
+    await asyncio.sleep(2)  # Add suspense with a delay
 
-    # Determine win/loss
-    if random.random() < (win_rate_percentage / 100):
-        # User wins
-        rarity = random.choice(['🔵 Low', '🟢 Medium', '🟣 High', '🟡 Nobel'])
-        characters = await get_random_characters(rarity)
+    progress_bar = "🔘🔘🔘🔘🔘"  # Progress bar
+    progress_text = f"🔄 **Progress:** {progress_bar}\n\nKeep watching!"
+    progress_message = await message.reply_text(progress_text)
 
-        if characters:
-            char = characters[0]
-            img_url = char['img_url']
-            caption = (
-                f"🎉 **Congratulations, {mention}!** 🎉\n"
-                f"You just won a character! ✨\n\n"
-                f"📝 **Name:** {char['name']}\n"
-                f"🌟 **Rarity:** {char['rarity']}\n"
-                f"🎥 **Anime:** {char['anime']}\n\n"
-                f"💎 **Enjoy your prize!**"
-            )
+    # Simulate progress updates
+    for i in range(5):
+        await asyncio.sleep(1)  # Delay for each update
+        progress_bar = progress_bar.replace("🔘", "🟢", 1)
+        progress_text = f"🔄 **Progress:** {progress_bar}\n\nStay tuned!"
+        await progress_message.edit_text(progress_text)
 
-            # Send the character details with an image
-            await spin_message.delete()
-            await message.reply_photo(photo=img_url, caption=caption)
-
-            # Add character to user's collection
-            await user_collection.update_one(
-                {'id': user_id},
-                {'$push': {'characters': char}}
-            )
-
-            # Random chance for bonus coins
-            if random.random() < 0.5:
-                bonus_coins = random.randint(50, 200)
-                await message.reply_text(
-                    f"💰 Bonus Alert! You've also won **{bonus_coins} coins**. Keep spinning for more rewards!"
-                )
+    # Simulate multiple spins
+    results = []
+    for spin in range(1, max_spins + 1):
+        if random.random() < (win_rate_percentage / 100):
+            rarity = random.choice(['🔵 Low', '🟢 Medium', '🟣 High', '🟡 Nobel'])
+            characters = await get_random_characters(rarity)
+            if characters:
+                for character in characters:
+                    results.append({
+                        "name": character['name'],
+                        "rarity": character['rarity'],
+                        "anime": character['anime'],
+                        "img_url": character['img_url']
+                    })
+                    # Save to user collection
+                    await user_collection.update_one(
+                        {'id': user_id},
+                        {'$push': {'characters': character}},
+                        upsert=True
+                    )
+            else:
+                results.append({"error": f"No character found for rarity {rarity}"})
         else:
-            await spin_message.edit("⚠️ Oops! Something went wrong. No characters were found for this rarity.")
-    else:
-        # User loses
-        lose_messages = [
-            "💔 You didn't win this time. Better luck next spin!",
-            "😢 No character this time, but keep trying!",
-            "🌀 The wheel wasn't in your favor. Spin again soon!"
-        ]
-        await spin_message.edit(random.choice(lose_messages))
+            results.append({"error": "No win this time"})
 
-    # Cool visual end animation
-    await asyncio.sleep(1)
-    await message.reply_text("🔔 **Spin completed!** Try again later.")
+    # Build results message
+    final_message = "**🎉 Spin Results!**\n\n"
+    for i, result in enumerate(results, 1):
+        if "error" in result:
+            final_message += f"🔹 Spin {i}: {result['error']} 💔\n"
+        else:
+            final_message += (
+                f"🔹 Spin {i}: **{result['name']}**\n"
+                f"    Rarity: {result['rarity']}\n"
+                f"    Anime: {result['anime']}\n"
+            )
+
+    # Send final message and images
+    if results:
+        await progress_message.delete()  # Clean up progress message
+        await message.reply_text(final_message)
+
+        # Send images
+        for result in results:
+            if "img_url" in result:
+                await message.reply_photo(
+                    photo=result["img_url"],
+                    caption=f"🎉 **You Won!**\n"
+                            f"**Name:** {result['name']}\n"
+                            f"**Rarity:** {result['rarity']}\n"
+                            f"**Anime:** {result['anime']}"
+                )
+    else:
+        await message.reply_text("💔 No rewards this time. Try again later!")
+
+    # Cooldown message
+    await asyncio.sleep(cooldown_duration)
+    await message.reply_text(f"✅ Your spin cooldown is over, {mention}! You can spin again.")
