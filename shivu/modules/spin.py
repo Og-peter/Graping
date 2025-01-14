@@ -1,173 +1,94 @@
 import asyncio
+import random
+import time
 from pyrogram import filters, Client, types as t
 from shivu import shivuu as bot
-from shivu import collection, user_collection
-import time
-import random
+from shivu import user_collection, collection
 
-# Cooldown and streak trackers
-cooldowns = {}
-streaks = {}
-milestones = [5, 10, 20, 50]  # Milestone rewards
+WIN_RATE_PERCENTAGE = 30  # Win rate percentage
+COOLDOWN_DURATION = 60  # Cooldown duration in seconds
+user_cooldowns = {}  # Dictionary to track user cooldowns
 
-async def get_random_character(receiver_id, target_rarities=['🟡 Nobel', '🥵 Nudes']):
+# List of banned user IDs
+BAN_USER_IDS = {1234567890}
+
+# Fetch random character based on rarity
+async def get_random_characters(selected_rarity):
     try:
-        user_data = await user_collection.find_one({'id': receiver_id}, {'characters': 1})
-        owned_character_ids = [char['id'] for char in user_data.get('characters', [])] if user_data else []
-
         pipeline = [
-            {'$match': {
-                'rarity': {'$in': target_rarities},
-                'id': {'$nin': owned_character_ids}
-            }},
+            {'$match': {'rarity': selected_rarity}},
             {'$sample': {'size': 1}}
         ]
         cursor = collection.aggregate(pipeline)
-        characters = await cursor.to_list(length=1)
+        characters = await cursor.to_list(length=None)
         return characters
     except Exception as e:
-        print(f"Error in get_random_character: {e}")
+        print(e)
         return []
 
 @bot.on_message(filters.command(["spin"]))
-async def spin(_, message: t.Message):
-    user_id = message.from_user.id
+async def spin(_: bot, message: t.Message):
+    chat_id = message.chat.id
     mention = message.from_user.mention
+    user_id = message.from_user.id
 
-    # Check if the user is spinning for the first time
-    user_data = await user_collection.find_one({'id': user_id})
-    is_first_spin = not user_data or not user_data.get('characters', [])
+    # Check if user is banned
+    if user_id in BAN_USER_IDS:
+        return await message.reply_text("🚫 You are banned from using this command. Please contact support.")
 
-    # Cooldown management (not applicable for the first spin)
-    if not is_first_spin and user_id in cooldowns and time.time() - cooldowns[user_id] < 60:
-        cooldown_time = int(60 - (time.time() - cooldowns[user_id]))
-        await message.reply_text(
-            f"⏳ *Patience, {mention}!*\nYou can spin again in *{cooldown_time} seconds*.", quote=True
-        )
-        return
+    # Check cooldown
+    if user_id in user_cooldowns and time.time() - user_cooldowns[user_id] < COOLDOWN_DURATION:
+        remaining_time = COOLDOWN_DURATION - int(time.time() - user_cooldowns[user_id])
+        return await message.reply_text(f"⏳ Please wait! Your spin will be ready in **{remaining_time} seconds**.")
 
-    # Update cooldown
-    if not is_first_spin:
-        cooldowns[user_id] = time.time()
+    # Set cooldown
+    user_cooldowns[user_id] = time.time()
 
-    # Start spinning animation
-    msg = await message.reply_text("🎰 **Spinning the wheel...** 🎰", quote=True)
-    await asyncio.sleep(2)
+    # Spinning animation
+    spinning_messages = [
+        "🔄 Spinning the wheel... 🌟",
+        "🎡 The wheel is turning... 🔥",
+        "🌀 Luck is being tested... 🍀",
+        "🌈 Spinning for your fortune... ✨"
+    ]
+    spinning_message = random.choice(spinning_messages)
+    progress_bar = "Spinning: [🌑🌑🌑🌑🌑🌑🌑🌑🌑🌑]"
+    msg = await message.reply_text(f"{spinning_message}\n{progress_bar}")
 
-    # Guarantee character for the first spin
-    if is_first_spin:
-        random_characters = await get_random_character(user_id)
+    # Simulate progress bar
+    for i in range(1, 11):
+        progress_bar = progress_bar.replace("🌑", "🌕", 1)
+        await asyncio.sleep(0.5)
+        await msg.edit_text(f"{spinning_message}\n{progress_bar}")
+
+    # Check win or lose
+    if random.random() < (WIN_RATE_PERCENTAGE / 100):
+        # Winning case
+        selected_rarity = random.choice(['🔵 Low', '🟢 Medium', '🟣 High', '🟡 Nobel'])
+        random_characters = await get_random_characters(selected_rarity)
+
         if random_characters:
-            character = random_characters[0]
-            await user_collection.update_one(
-                {'id': user_id}, {'$push': {'characters': character}}, upsert=True
-            )
-            character_image = character.get('image_url', None)
-            if character_image:
-                await bot.send_photo(
-                    chat_id=message.chat.id,
-                    photo=character_image,
-                    caption=(
-                        f"🌟 **Name:** {character['name']}\n"
-                        f"⚜️ **Rarity:** {character['rarity']}\n"
-                        f"⛩️ **Anime:** {character['anime']}\n\n"
-                        f"🎉 *First Spin Bonus!* {mention}, you've unlocked your first character!"
-                    ),
-                    reply_to_message_id=message.message_id
-                )
-            else:
-                await msg.edit_text(
-                    f"🎉 *First Spin Bonus!* 🎉\n\n"
-                    f"🌟 **Name:** {character['name']}\n"
-                    f"⚜️ **Rarity:** {character['rarity']}\n"
-                    f"⛩️ **Anime:** {character['anime']}\n\n"
-                    f"Congratulations {mention}!"
-                )
+            img_urls = [character['img_url'] for character in random_characters]
+            captions = [
+                f"✨ **Congratulations {mention}!** 🎉\n\n"
+                f"🏆 **Character Name:** {character['name']}\n"
+                f"🔮 **Rarity:** {character['rarity']}\n"
+                f"📺 **Anime:** {character['anime']}\n\n"
+                f"💖 Keep spinning for more amazing rewards!"
+                for character in random_characters
+            ]
+
+            for img_url, caption in zip(img_urls, captions):
+                await message.reply_photo(photo=img_url, caption=caption)
+
+            # Add character to user's collection
+            for character in random_characters:
+                await user_collection.update_one({'id': user_id}, {'$push': {'characters': character}})
         else:
-            await msg.edit_text(
-                "⚠️ *Error:* Unable to fetch a character. Please try again later."
-            )
-        return
-
-    # Regular spin logic after the first spin
-    spin_symbols = ["🍒", "💎", "⭐", "🍀", "🔥", "🌟", "⚡"]
-    spin_result = random.choices(spin_symbols, k=3)
-    formatted_result = f"🎰 | {spin_result[0]} | {spin_result[1]} | {spin_result[2]}"
-
-    outcomes = {
-        "jackpot": 10,
-        "epic": 30,
-        "rare": 25,
-        "common": 20,
-        "bonus": 15
-    }
-    outcome = random.choices(list(outcomes.keys()), weights=outcomes.values(), k=1)[0]
-
-    if outcome == "jackpot":
-        random_characters = await get_random_character(user_id)
-        if random_characters:
-            character = random_characters[0]
-            await user_collection.update_one(
-                {'id': user_id}, {'$push': {'characters': character}}, upsert=True
-            )
-            character_image = character.get('image_url', None)
-            if character_image:
-                await bot.send_photo(
-                    chat_id=message.chat.id,
-                    photo=character_image,
-                    caption=(
-                        f"🌟 **Name:** {character['name']}\n"
-                        f"⚜️ **Rarity:** {character['rarity']}\n"
-                        f"⛩️ **Anime:** {character['anime']}\n\n"
-                        f"🎉 *JACKPOT!* {mention}, you've unlocked a *legendary* character!"
-                    ),
-                    reply_to_message_id=message.message_id
-                )
-            else:
-                await msg.edit_text(
-                    f"{formatted_result}\n\n🎉 *JACKPOT!* 🎉\n\n"
-                    f"🌟 **Name:** {character['name']}\n"
-                    f"⚜️ **Rarity:** {character['rarity']}\n"
-                    f"⛩️ **Anime:** {character['anime']}\n\n"
-                    f"Congratulations {mention}!"
-                )
-        else:
-            await msg.edit_text(
-                f"🎉 *JACKPOT!* 🎉\n\n{formatted_result}\n\n"
-                f"⚠️ No new characters available! Check back later."
-            )
-        cooldowns[user_id] -= 30
-
-    elif outcome == "epic":
-        await msg.edit_text(
-            f"✨ *EPIC WIN!* ✨\n\n{formatted_result}\n\n"
-            f"🔥 Incredible, {mention}! You're getting closer to greatness!"
-        )
-        cooldowns[user_id] -= 20
-
-    elif outcome == "rare":
-        await msg.edit_text(
-            f"🌟 *Rare Find!* 🌟\n\n{formatted_result}\n\n"
-            f"🍀 Good job, {mention}! Rare combos are rewarding!"
-        )
-        cooldowns[user_id] -= 15
-
-    elif outcome == "bonus":
-        await msg.edit_text(
-            f"🎁 *BONUS SPIN!* 🎁\n\n{formatted_result}\n\n"
-            f"🔄 You've earned an extra spin, {mention}! Spin again now!"
-        )
-        cooldowns[user_id] = 0
-
+            await msg.edit_text("❗ Something went wrong. Please try again later.")
     else:
+        # Losing case
         await msg.edit_text(
-            f"💔 *No Luck This Time!* 💔\n\n{formatted_result}\n\n"
-            f"🔄 Keep trying, {mention}! The big win is just around the corner!"
+            f"💔 **Better luck next time, {mention}!**\n\n"
+            f"🌟 Keep trying! Your fortune might change in the next spin."
         )
-
-    # Streak tracking
-    streaks[user_id] = streaks.get(user_id, 0) + 1
-    if streaks[user_id] % 5 == 0:
-        await message.reply_text(
-            f"🔥 *Streak Bonus!* 🔥\nYou've completed a streak of *{streaks[user_id]}* spins, {mention}!"
-            )
