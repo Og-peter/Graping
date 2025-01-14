@@ -66,7 +66,7 @@ async def claim_handler(_, message: t.Message):
         )
 
     # Check channel subscription
-    channel_username = "dynamic_supports"  # Replace with your channel username
+    channel_username = "dynamic_bot_supports"  # Replace with your channel username
     try:
         await bot.get_chat_member(channel_username, user_id)
     except UserNotParticipant:
