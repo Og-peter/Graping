@@ -45,21 +45,20 @@ async def spin(_: bot, message: t.Message):
     user_cooldowns[user_id] = time.time()
 
     # Spinning animation
-    spinning_messages = [
-        "🔄 Spinning the wheel... 🌟",
-        "🎡 The wheel is turning... 🔥",
-        "🌀 Luck is being tested... 🍀",
-        "🌈 Spinning for your fortune... ✨"
-    ]
-    spinning_message = random.choice(spinning_messages)
-    progress_bar = "Spinning: [🌑🌑🌑🌑🌑🌑🌑🌑🌑🌑]"
-    msg = await message.reply_text(f"{spinning_message}\n{progress_bar}")
+    spinning_message = "🎡 **The wheel is turning... 🔥**"
+    progress_bar = ["🌑"] * 10  # Initial empty progress bar
+    msg = await message.reply_text(f"{spinning_message}\nSpinning: [{''.join(progress_bar)}]")
 
-    # Simulate progress bar
-    for i in range(1, 11):
-        progress_bar = progress_bar.replace("🌑", "🌕", 1)
-        await asyncio.sleep(0.5)
-        await msg.edit_text(f"{spinning_message}\n{progress_bar}")
+    # Simulate progress bar animation
+    for i in range(10):
+        progress_bar[i] = "🌕"  # Update progress
+        await asyncio.sleep(0.3)  # Delay for smooth animation
+        await msg.edit_text(f"{spinning_message}\nSpinning: [{''.join(progress_bar)}]")
+
+    # Final spin reveal animation
+    await asyncio.sleep(0.5)
+    await msg.edit_text(f"🎊 **The wheel is slowing down... 🌀**")
+    await asyncio.sleep(1)
 
     # Check win or lose
     if random.random() < (WIN_RATE_PERCENTAGE / 100):
@@ -91,4 +90,4 @@ async def spin(_: bot, message: t.Message):
         await msg.edit_text(
             f"💔 **Better luck next time, {mention}!**\n\n"
             f"🌟 Keep trying! Your fortune might change in the next spin."
-        )
+            )
