@@ -8,7 +8,7 @@ from itertools import groupby
 from shivu import collection, user_collection, application
 
 # Define your support channel and group usernames
-SUPPORT_CHANNEL = "@dynamic_supports"  # Replace with your channel username
+SUPPORT_CHANNEL = "@dynamic_bot_supports"  # Replace with your channel username
 SUPPORT_GROUP = "@main_dynamic"      # Replace with your group username
 
 async def harem(update: Update, context: CallbackContext, page=0, edit=False) -> None:
