@@ -6,56 +6,55 @@ from shivu import shivuu as bot
 from shivu import user_collection, collection
 
 # Configuration
-win_rate_percentage = 40  # Probability of winning
+win_rate_percentage = 50  # Probability of winning
 cooldown_duration = 600  # Cooldown time in seconds
 
-user_cooldowns = {}  # Track user cooldowns
-
-# Banned User IDs
+user_cooldowns = {}
 ban_user_ids = {1234567890}
 
-# Anime Arc Data with Individual Character Images
+# Anime Arc Data with Expanded Features
 anime_arcs = [
     {
         "arc": "Naruto - Pain's Assault",
-        "heroes": ["Naruto Uzumaki", "Kakashi Hatake"],
-        "villains": ["Pain", "Konan"],
-        "image": "https://files.catbox.moe/83rsnb.jpg",
+        "heroes": [
+            {"name": "Naruto Uzumaki", "img_url": "https://files.catbox.moe/1naruto.jpg"},
+            {"name": "Kakashi Hatake", "img_url": "https://files.catbox.moe/1kakashi.jpg"},
+        ],
+        "villains": [
+            {"name": "Pain", "img_url": "https://files.catbox.moe/1pain.jpg"},
+            {"name": "Konan", "img_url": "https://files.catbox.moe/1konan.jpg"},
+        ],
+        "battle_image": "https://files.catbox.moe/83rsnb.jpg",
     },
     {
         "arc": "One Piece - Marineford War",
-        "heroes": ["Monkey D. Luffy", "Whitebeard"],
-        "villains": ["Akainu", "Blackbeard"],
-        "image": "https://files.catbox.moe/urb2aa.jpg",
-    },
-    {
-        "arc": "Dragon Ball - Cell Saga",
-        "heroes": ["Goku", "Gohan"],
-        "villains": ["Cell", "Android 17"],
-        "image": "https://files.catbox.moe/9arc3h.jpg",
-    },
-    {
-        "arc": "Bleach - Hueco Mundo",
-        "heroes": ["Ichigo Kurosaki", "Rukia Kuchiki"],
-        "villains": ["Ulquiorra", "Grimmjow"],
-        "image": "https://files.catbox.moe/v6q5a1.jpg",
-    },
-    {
-        "arc": "Attack on Titan - Shiganshina",
-        "heroes": ["Eren Yeager", "Mikasa Ackerman"],
-        "villains": ["Zeke Yeager", "Reiner Braun"],
-        "image": "https://files.catbox.moe/b814or.jpg",
+        "heroes": [
+            {"name": "Monkey D. Luffy", "img_url": "https://files.catbox.moe/1luffy.jpg"},
+            {"name": "Whitebeard", "img_url": "https://files.catbox.moe/1whitebeard.jpg"},
+        ],
+        "villains": [
+            {"name": "Akainu", "img_url": "https://files.catbox.moe/1akainu.jpg"},
+            {"name": "Blackbeard", "img_url": "https://files.catbox.moe/1blackbeard.jpg"},
+        ],
+        "battle_image": "https://files.catbox.moe/urb2aa.jpg",
     },
 ]
 
+rarities = ['🔵 Common', '🟢 Rare', '🔴 Epic', '🟡 Legendary', '🔮 Mythical']
 
-# List of rarities
-rarities = ['🔵 Low', '🟢 Medium', '🔴 High', '🟡 Nobel', '🔮 Limited']  # Example rarities
-
-# Helper Function: Human-readable cooldown
+# Helper Functions
 def human_readable_time(seconds: int) -> str:
     mins, secs = divmod(seconds, 60)
     return f"{mins}m {secs}s" if mins else f"{secs}s"
+
+def get_random_event() -> str:
+    events = [
+        "⚡ A sudden lightning strike empowers the heroes!",
+        "🔥 The villains unleash a devastating attack!",
+        "🌀 A mysterious force alters the battle's tide!",
+        "💪 Heroes gain unexpected reinforcements!",
+    ]
+    return random.choice(events)
 
 @bot.on_message(filters.command(["animearc"]))
 async def anime_arc_battle(_, message: t.Message):
@@ -70,56 +69,65 @@ async def anime_arc_battle(_, message: t.Message):
     # Check cooldown
     if user_id in user_cooldowns and time.time() - user_cooldowns[user_id] < cooldown_duration:
         remaining_time = cooldown_duration - int(time.time() - user_cooldowns[user_id])
-        return await message.reply_text(f"⏳ Wait {human_readable_time(remaining_time)} before starting another battle!")
+        return await message.reply_text(
+            f"⏳ Please wait {human_readable_time(remaining_time)} before attempting another battle!"
+        )
 
-    # Select a random anime arc
+    # Select a random arc
     selected_arc = random.choice(anime_arcs)
-
-    # Set user cooldown
     user_cooldowns[user_id] = time.time()
 
     try:
-        # Initial message with arc details
+        # Start battle
         start_message = (
-            f"⚔️ **Anime Arc Battle** ⚔️\n\n**Arc:** {selected_arc['arc']}\n"
+            f"⚔️ **Anime Arc Battle** ⚔️\n\n"
+            f"**Arc:** {selected_arc['arc']}\n\n"
             f"**Heroes:** {', '.join([hero['name'] for hero in selected_arc['heroes']])}\n"
-            f"**Villains:** {', '.join(selected_arc['villains'])}\n\n🌟 **Let the battle begin!**"
+            f"**Villains:** {', '.join([villain['name'] for villain in selected_arc['villains']])}\n\n"
+            f"🌌 **The epic battle begins! Brace yourself, {mention}!**"
         )
-        await bot.send_photo(chat_id, photo=selected_arc['image'], caption=start_message)
+        await bot.send_photo(chat_id, photo=selected_arc['battle_image'], caption=start_message)
 
-        # Simulate battle
-        await asyncio.sleep(3)
-        await message.reply_text("🌀 Heroes and Villains are clashing fiercely...")
         await asyncio.sleep(3)
 
+        # Simulate phases of battle
+        for i in range(2):  # 2 phases
+            event = get_random_event()
+            await message.reply_text(f"🌀 Phase {i + 1}: {event}")
+            await asyncio.sleep(3)
+
+        # Determine outcome
         if random.random() < (win_rate_percentage / 100):
-            # User wins, assign a random rarity and hero
+            # Victory
             selected_rarity = random.choice(rarities)
             reward_character = random.choice(selected_arc['heroes'])
             reward_data = {
-                "name": reward_character['name'],
-                "anime": selected_arc['arc'],
+                "name": reward_character["name"],
+                "anime": selected_arc["arc"],
                 "rarity": selected_rarity,
-                "img_url": reward_character['img_url'],
+                "img_url": reward_character["img_url"],
             }
             await user_collection.update_one(
                 {"id": user_id}, {"$push": {"characters": reward_data}}
             )
 
             victory_message = (
-                f"🎉 **Victory!**\n\n{mention}, you triumphed in the battle of **{selected_arc['arc']}**!\n\n"
-                f"**🎖️ Reward:**\n"
-                f"🏅 **Character:** {reward_character['name']}\n"
-                f"⭐ **Rarity:** {selected_rarity}\n\nKeep battling for more rewards!"
+                f"🎉 **Victory!**\n\n"
+                f"{mention}, you emerged victorious in the **{selected_arc['arc']}** battle!\n\n"
+                f"🏅 **Reward:**\n"
+                f"🎭 **Character:** {reward_character['name']}\n"
+                f"⭐ **Rarity:** {selected_rarity}\n\n"
+                f"💾 **Character added to your collection!**"
             )
-            await bot.send_photo(chat_id, photo=reward_character['img_url'], caption=victory_message)
+            await bot.send_photo(chat_id, photo=reward_character["img_url"], caption=victory_message)
         else:
-            # User loses
+            # Defeat
             defeat_message = (
-                f"💀 **Defeat!**\n\n{mention}, the villains overpowered you in the epic battle of "
-                f"**{selected_arc['arc']}**. Don't give up; train harder and try again!"
+                f"💀 **Defeat!**\n\n"
+                f"The villains triumphed in the battle of **{selected_arc['arc']}**. Don't give up, {mention}! "
+                f"Prepare for your next epic encounter!"
             )
-            await bot.send_photo(chat_id, photo=selected_arc['image'], caption=defeat_message)
+            await bot.send_photo(chat_id, photo=selected_arc['battle_image'], caption=defeat_message)
     except Exception as e:
         print(f"Error: {e}")
-        await message.reply_text("❗ An error occurred. Please try again later.")
+        await message.reply_text("❗ An error occurred during the battle. Please try again later.")
