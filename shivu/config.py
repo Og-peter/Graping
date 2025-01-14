@@ -9,7 +9,7 @@ class Config(object):
     mongo_url = "mongodb+srv://nudewaifubot:nudewaifubot@nude.50fk0.mongodb.net/?retryWrites=true&w=majority&appName=nude"
     PHOTO_URL = ["https://ibb.co/q7jzMwz", "https://ibb.co/T2qNx5m", "https://ibb.co/TYS7yC4", "https://ibb.co/hVRR0T1", "https://ibb.co/3W3rVy6"]
     SUPPORT_CHAT = "main_dynamic"
-    UPDATE_CHAT = "dynamic_supports"
+    UPDATE_CHAT = "dynamic_bot_supports"
     BOT_USERNAME = "Grap_Waifu_Bot"
     CHARA_CHANNEL_ID = "-1002417394982"
     api_id = 24698455
